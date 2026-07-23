@@ -1,0 +1,34 @@
+{
+  "name": "typist-mcp",
+  "version": "1.0.0",
+  "description": "Remote MCP server for Typist — gives AI agents read access to your transcript library",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "pnpm run typecheck && pnpm run lint",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint . --quiet",
+    "lint:fix": "oxlint . --fix --quiet",
+    "test": "vitest run --reporter=dot --silent",
+    "test:unit": "vitest run --reporter=dot --silent",
+    "cf-typegen": "wrangler types",
+    "deploy": "wrangler deploy --env preview",
+    "deploy:prod": "wrangler deploy --env prod"
+  },
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "catalog:",
+    "@modelcontextprotocol/sdk": "catalog:",
+    "@typist/core": "workspace:*",
+    "agents": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "catalog:",
+    "@cloudflare/workers-types": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

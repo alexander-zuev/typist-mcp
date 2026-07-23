@@ -1,0 +1,106 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "typist-mcp-dev",
+  "main": "./src/index.ts",
+  "compatibility_date": "2026-05-22",
+  "compatibility_flags": ["nodejs_compat"],
+  "upload_source_maps": true,
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+      "head_sampling_rate": 1,
+    },
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["TypistMcp"],
+    },
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "MCP_OBJECT", "class_name": "TypistMcp" },
+      { "name": "RATE_LIMITER", "class_name": "RateLimiterDO", "script_name": "typist-dev" },
+    ],
+  },
+  // Local dev: main app must be running (`pnpm dev`) so the service binding resolves.
+  "vars": {
+    "ENV": "development",
+    "MAIN_APP_URL": "http://localhost:5174",
+  },
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "typist-mcp-oauth-dev" }],
+  "services": [
+    { "binding": "TYPIST_GATEWAY", "service": "typist-dev", "entrypoint": "McpGateway" },
+  ],
+  "secrets": {
+    "required": ["MCP_STATE_SECRET"],
+  },
+  "env": {
+    // Test: no cross-script bindings — vitest supplies a fake gateway worker
+    // (TYPIST_GATEWAY service binding + RATE_LIMITER DO) via miniflare options.
+    "test": {
+      "name": "typist-mcp-test",
+      "vars": {
+        "ENV": "development",
+        "MAIN_APP_URL": "https://app.test",
+      },
+      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "test-oauth-kv" }],
+      "durable_objects": {
+        "bindings": [{ "name": "MCP_OBJECT", "class_name": "TypistMcp" }],
+      },
+    },
+    "preview": {
+      "name": "typist-mcp-preview",
+      "vars": {
+        "ENV": "preview",
+        "MAIN_APP_URL": "https://preview.iamtypist.dev",
+      },
+      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "TBD_PREVIEW_KV_ID" }],
+      "services": [
+        { "binding": "TYPIST_GATEWAY", "service": "typist-preview", "entrypoint": "McpGateway" },
+      ],
+      "durable_objects": {
+        "bindings": [
+          { "name": "MCP_OBJECT", "class_name": "TypistMcp" },
+          { "name": "RATE_LIMITER", "class_name": "RateLimiterDO", "script_name": "typist-preview" },
+        ],
+      },
+      "secrets": {
+        "required": ["MCP_STATE_SECRET"],
+      },
+      "routes": [
+        {
+          "pattern": "mcp-preview.iamtypist.dev",
+          "custom_domain": true,
+        },
+      ],
+    },
+    "prod": {
+      "name": "typist-mcp",
+      "vars": {
+        "ENV": "production",
+        "MAIN_APP_URL": "https://iamtypist.dev",
+      },
+      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "TBD_PROD_KV_ID" }],
+      "services": [
+        { "binding": "TYPIST_GATEWAY", "service": "typist", "entrypoint": "McpGateway" },
+      ],
+      "durable_objects": {
+        "bindings": [
+          { "name": "MCP_OBJECT", "class_name": "TypistMcp" },
+          { "name": "RATE_LIMITER", "class_name": "RateLimiterDO", "script_name": "typist" },
+        ],
+      },
+      "secrets": {
+        "required": ["MCP_STATE_SECRET"],
+      },
+      "routes": [
+        {
+          "pattern": "mcp.iamtypist.dev",
+          "custom_domain": true,
+        },
+      ],
+    },
+  },
+}
