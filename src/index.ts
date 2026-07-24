@@ -1,15 +1,26 @@
 import OAuthProvider from '@cloudflare/workers-oauth-provider'
-import { TypistMcp } from './agent'
-import { authFlowHandler, SUPPORTED_SCOPE } from './auth-flow'
+import * as Sentry from '@sentry/cloudflare'
+import { setLoggerErrorHook } from '@typist/core'
+
+import { authFlowHandler } from './entrypoints/auth-handlers'
+import { TypistMcp } from './entrypoints/mcp-server'
+import { createMcpServerSentryOptions } from './infrastructure/observability/sentry'
 
 export { TypistMcp }
+
+setLoggerErrorHook((entry) => {
+  Sentry.captureException(entry.error, {
+    extra: entry.context,
+    ...(entry.distinctId && { user: { id: entry.distinctId } }),
+  })
+})
 
 /**
  * typist-mcp IS the OAuth authorization server (spec D1): the provider owns
  * /token, /register, and discovery metadata; /authorize + /approve live in the
  * default handler and lean on the main app for session + consent UI.
  */
-export default new OAuthProvider({
+const oauthProvider = new OAuthProvider<McpEnv>({
   // Streamable HTTP only — v1 has no legacy SSE surface.
   apiHandlers: {
     '/mcp': TypistMcp.serve('/mcp'),
@@ -18,6 +29,11 @@ export default new OAuthProvider({
   authorizeEndpoint: '/authorize',
   tokenEndpoint: '/token',
   clientRegistrationEndpoint: '/register',
-  scopesSupported: [SUPPORTED_SCOPE],
   allowPlainPKCE: false,
 })
+
+export default Sentry.withSentry(createMcpServerSentryOptions, {
+  fetch(request, env, ctx) {
+    return oauthProvider.fetch(request, env, ctx)
+  },
+}) satisfies ExportedHandler<McpEnv>

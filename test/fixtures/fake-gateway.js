@@ -5,7 +5,7 @@ import { DurableObject, WorkerEntrypoint } from 'cloudflare:workers'
  * (`McpGatewayContract` + `RateLimiterRpc`). Behavior is keyed off inputs so
  * tests stay declarative:
  * - cookie `typist_session=<userId>` resolves a session; `typist_anon=1` marks it anonymous
- * - transcript id ending in `404` returns `{ kind: 'not_found' }`
+ * - transcript id ending in `404` returns a NOT_FOUND error envelope
  * - userId containing `rate-limited` is denied by the rate limiter
  * - userId containing `gateway-down` returns a safe infrastructure error envelope
  */
@@ -18,6 +18,14 @@ const unavailable = () => ({
     code: 'INFRASTRUCTURE_ERROR',
     message: 'Something went wrong',
     retryable: true,
+  },
+})
+const notFound = () => ({
+  status: 'error',
+  error: {
+    code: 'NOT_FOUND',
+    message: 'Transcript not found',
+    retryable: false,
   },
 })
 
@@ -83,12 +91,9 @@ export class McpGateway extends WorkerEntrypoint {
 
   async downloadTranscript(userId, input) {
     if (userId.includes('gateway-down')) return unavailable()
-    if (input.id === NOT_FOUND_ID) return ok({ kind: 'not_found', id: input.id })
+    if (input.id === NOT_FOUND_ID) return notFound()
     return ok({
-      kind: 'found',
-      id: input.id,
-      ...META,
-      url: 'https://r2.test/export.txt?sig=abc',
+      downloadUrl: 'https://r2.test/export.txt?sig=abc',
       expiresAt: '2026-07-24T20:00:00.000Z',
       format: input.format,
     })

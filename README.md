@@ -10,10 +10,13 @@ https://mcp.iamtypist.dev/mcp
 
 | Tool | What it does |
 | --- | --- |
-| `search_transcripts` | Search your library by title/topic, category, or date range |
-| `get_transcript` | Fetch transcript content (txt/srt/vtt), chunked for token-constrained clients, or as a 1-hour download link |
+| `search_transcripts` | Search by title/topic, category, or date range; omit the query to list recent transcripts |
+| `read_transcript` | Read transcript content in `txt`, `srt`, or `vtt`, with bounded pagination for agent context windows |
+| `download_transcript` | Create a one-hour download URL in `txt`, `srt`, or `vtt` |
 
-Auth is OAuth 2.1 (PKCE + dynamic client registration) — sign in with your Typist account, approve read access, done. Read-only: agents can never modify or delete your transcripts.
+Locked transcripts remain discoverable, while read and download access stays limited to the preview available to the account.
+
+Auth is OAuth 2.1 (PKCE + dynamic client registration): sign in with your Typist account and approve transcript read access. Every tool is read-only; agents cannot modify or delete transcripts.
 
 ## Architecture
 

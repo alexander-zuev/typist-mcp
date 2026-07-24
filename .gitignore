@@ -5,4 +5,3 @@ dist
 .dev.vars*
 .env.keys
 *.tsbuildinfo
-worker-configuration.d.ts

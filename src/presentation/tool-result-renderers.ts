@@ -1,11 +1,11 @@
 import type {
-  DownloadTranscriptResult,
+  ExportTranscriptionResponse,
   ReadTranscriptResult,
   TranscriptsPage,
 } from '@typist/core'
 
 /**
- * Compact text renderings of the structured tool results. The text content
+ * Compact presentation of structured tool results. The text content
  * block is what token-constrained clients show verbatim, so it stays terse;
  * `structuredContent` carries the full DTO.
  */
@@ -45,15 +45,17 @@ export function renderReadResult(
   const notes: string[] = []
   if (result.locked) notes.push('locked — preview only')
   if (result.truncated && result.nextOffset !== undefined) {
-    notes.push(`chars ${result.offset}-${result.offset + result.text.length} of ${result.totalChars}, continue with offset=${result.nextOffset}`)
+    notes.push(
+      `chars ${result.offset}-${result.offset + result.text.length} of ${result.totalChars}, continue with offset=${result.nextOffset}`,
+    )
   } else {
-    notes.push(`chars ${result.offset}-${result.offset + result.text.length} of ${result.totalChars}, complete`)
+    notes.push(
+      `chars ${result.offset}-${result.offset + result.text.length} of ${result.totalChars}, complete`,
+    )
   }
   return `${result.displayName} (${notes.join('; ')})\n\n${result.text}`
 }
 
-export function renderDownloadResult(
-  result: Exclude<DownloadTranscriptResult, { kind: 'not_found' }>,
-): string {
-  return `${result.displayName}: download ${result.format} at ${result.url} (expires ${result.expiresAt})`
+export function renderDownloadResult(result: ExportTranscriptionResponse): string {
+  return `Download ${result.format} at ${result.downloadUrl} (expires ${result.expiresAt})`
 }

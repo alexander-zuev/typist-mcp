@@ -28,6 +28,7 @@
   "vars": {
     "ENV": "development",
     "MAIN_APP_URL": "http://localhost:5174",
+    "SENTRY_DSN": "https://025c309210af44f5a2b9a7f5446c29dd@o4508393623257088.ingest.us.sentry.io/4511790584561664",
   },
   // OAUTH_KV reuses the main app's TYPIST_AUTH namespace (auth state lives
   // together); workers-oauth-provider keys are prefixed and cannot collide.
@@ -39,24 +40,12 @@
     "required": ["MCP_STATE_SECRET"],
   },
   "env": {
-    // Test: no cross-script bindings — vitest supplies a fake gateway worker
-    // (TYPIST_GATEWAY service binding + RATE_LIMITER DO) via miniflare options.
-    "test": {
-      "name": "typist-mcp-test",
-      "vars": {
-        "ENV": "development",
-        "MAIN_APP_URL": "https://app.test",
-      },
-      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "test-oauth-kv" }],
-      "durable_objects": {
-        "bindings": [{ "name": "MCP_OBJECT", "class_name": "TypistMcp" }],
-      },
-    },
     "prod": {
       "name": "typist-mcp",
       "vars": {
         "ENV": "production",
         "MAIN_APP_URL": "https://iamtypist.dev",
+        "SENTRY_DSN": "https://025c309210af44f5a2b9a7f5446c29dd@o4508393623257088.ingest.us.sentry.io/4511790584561664",
       },
       "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "a76e629b08df4062b629d2bc8ba59215" }],
       "services": [

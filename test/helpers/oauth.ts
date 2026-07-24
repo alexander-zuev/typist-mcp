@@ -51,12 +51,15 @@ export async function registerClient(metadata?: Record<string, unknown>): Promis
   return body.client_id
 }
 
-export function authorizeUrl(clientId: string, challenge: string, clientState = 'client-state'): string {
+export function authorizeUrl(
+  clientId: string,
+  challenge: string,
+  clientState = 'client-state',
+): string {
   const url = new URL('/authorize', MCP_ORIGIN)
   url.searchParams.set('response_type', 'code')
   url.searchParams.set('client_id', clientId)
   url.searchParams.set('redirect_uri', REDIRECT_URI)
-  url.searchParams.set('scope', 'transcripts:read')
   url.searchParams.set('state', clientState)
   url.searchParams.set('code_challenge', challenge)
   url.searchParams.set('code_challenge_method', 'S256')
@@ -100,20 +103,21 @@ export async function exchangeCode(
   code: string,
   verifier: string,
 ): Promise<string> {
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: REDIRECT_URI,
+    client_id: clientId,
+    code_verifier: verifier,
+  })
   const response = await selfFetch(`${MCP_ORIGIN}/token`, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: REDIRECT_URI,
-      client_id: clientId,
-      code_verifier: verifier,
-    }),
+    body,
   })
   if (response.status !== 200) throw new Error(`token exchange failed: ${response.status}`)
-  const body: { access_token: string } = await response.json()
-  return body.access_token
+  const tokenResponse: { access_token: string } = await response.json()
+  return tokenResponse.access_token
 }
 
 /** Full connect flow for a user: DCR → PKCE authorize/approve → token. */
@@ -122,4 +126,18 @@ export async function obtainAccessToken(userId: string): Promise<string> {
   const { verifier, challenge } = await createPkcePair()
   const code = await authorizeAndApprove(clientId, challenge, sessionCookie(userId))
   return exchangeCode(clientId, code, verifier)
+}
+
+/** Expire a real provider-issued access token in test KV. */
+export async function expireAccessToken(token: string): Promise<void> {
+  const [userId, grantId] = token.split(':')
+  if (!userId || !grantId) throw new Error('invalid provider token')
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))
+  const tokenId = [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('')
+  const key = `token:${userId}:${grantId}:${tokenId}`
+  const stored = await env.OAUTH_KV.get<Record<string, unknown>>(key, 'json')
+  if (!stored) throw new Error('provider token record not found')
+  await env.OAUTH_KV.put(key, JSON.stringify({ ...stored, expiresAt: 0 }))
 }

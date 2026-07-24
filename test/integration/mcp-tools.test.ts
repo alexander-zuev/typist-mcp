@@ -1,5 +1,6 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { afterEach, describe, expect, it } from 'vitest'
+
 import { connectMcpClient } from '../helpers/mcp-client'
 import { obtainAccessToken } from '../helpers/oauth'
 
@@ -121,10 +122,9 @@ describe('download_transcript', () => {
       arguments: { id: VALID_ID, format: 'srt' },
     })
     const { result: download } = result.structuredContent as {
-      result: { kind: string; url: string; format: string }
+      result: { downloadUrl: string; format: string }
     }
-    expect(download.kind).toBe('found')
-    expect(download.url).toContain('https://r2.test/')
+    expect(download.downloadUrl).toContain('https://r2.test/')
     expect(download.format).toBe('srt')
   })
 
@@ -136,6 +136,22 @@ describe('download_transcript', () => {
     })
     expect(result.isError).toBe(true)
     expect(textOf(result)).toBe('Transcript not found')
+  })
+
+  it('rejects dashboard-only binary formats', async () => {
+    const mcp = await connectAs('user-download-format')
+    const result = await mcp
+      .callTool({
+        name: 'download_transcript',
+        arguments: { id: VALID_ID, format: 'pdf' },
+      })
+      .catch((error: Error) => error)
+
+    if (result instanceof Error) {
+      expect(result.message).toMatch(/invalid/i)
+    } else {
+      expect(result.isError).toBe(true)
+    }
   })
 })
 

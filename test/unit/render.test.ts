@@ -1,6 +1,15 @@
-import type { DownloadTranscriptResult, ReadTranscriptResult, TranscriptsPage } from '@typist/core'
+import type {
+  ExportTranscriptionResponse,
+  ReadTranscriptResult,
+  TranscriptsPage,
+} from '@typist/core'
 import { describe, expect, it } from 'vitest'
-import { renderDownloadResult, renderReadResult, renderTranscriptsPage } from '../../src/render'
+
+import {
+  renderDownloadResult,
+  renderReadResult,
+  renderTranscriptsPage,
+} from '../../src/presentation/tool-result-renderers'
 
 const item = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -74,10 +83,8 @@ describe('renderReadResult', () => {
 
 describe('renderDownloadResult', () => {
   it('renders the download link with format and expiry', () => {
-    const result: Exclude<DownloadTranscriptResult, { kind: 'not_found' }> = {
-      ...meta,
-      kind: 'found',
-      url: 'https://r2.test/export.srt',
+    const result: ExportTranscriptionResponse = {
+      downloadUrl: 'https://r2.test/export.srt',
       expiresAt: '2026-07-24T20:00:00.000Z',
       format: 'srt',
     }

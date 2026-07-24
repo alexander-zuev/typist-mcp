@@ -14,12 +14,12 @@ export default defineConfig({
     cloudflareTest({
       wrangler: {
         configPath: './wrangler.jsonc',
-        environment: 'test',
       },
       miniflare: {
         compatibilityDate: '2026-02-24',
         compatibilityFlags: ['nodejs_compat'],
         bindings: {
+          MAIN_APP_URL: 'https://app.test',
           MCP_STATE_SECRET: 'test-state-secret-32-chars-long!',
         },
         serviceBindings: {

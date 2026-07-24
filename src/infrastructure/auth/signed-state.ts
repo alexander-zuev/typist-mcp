@@ -2,7 +2,7 @@ import type { AuthRequest } from '@cloudflare/workers-oauth-provider'
 import type { UserId } from '@typist/core'
 
 /**
- * HMAC-signed carrier for the parsed OAuth request across the
+ * HMAC-signed infrastructure carrier for the parsed OAuth request across the
  * authorize → main-app consent page → approve round trip. The consent page is
  * on another origin (the main app), so the request travels through the user's
  * browser and must be tamper-proof and short-lived.
@@ -12,7 +12,7 @@ import type { UserId } from '@typist/core'
  * approving a grant minted under the attacker's session (consent CSRF).
  */
 
-const STATE_TTL_MS = 10 * 60 * 1000
+export const OAUTH_STATE_TTL_SECONDS = 10 * 60
 
 interface StatePayload {
   oauthReq: AuthRequest
@@ -48,7 +48,11 @@ export async function signOAuthState(
   oauthReq: AuthRequest,
   userId: UserId,
 ): Promise<string> {
-  const payload: StatePayload = { oauthReq, userId, expiresAt: Date.now() + STATE_TTL_MS }
+  const payload: StatePayload = {
+    oauthReq,
+    userId,
+    expiresAt: Date.now() + OAUTH_STATE_TTL_SECONDS * 1000,
+  }
   const body = encoder.encode(JSON.stringify(payload))
   const signature = await crypto.subtle.sign('HMAC', await hmacKey(secret), body)
   return `${toBase64Url(new Uint8Array(body))}.${toBase64Url(new Uint8Array(signature))}`
@@ -59,7 +63,9 @@ export async function verifyOAuthState(
   secret: string,
   state: string,
 ): Promise<{ oauthReq: AuthRequest; userId: UserId } | null> {
-  const [body, signature] = state.split('.')
+  const parts = state.split('.')
+  if (parts.length !== 2) return null
+  const [body, signature] = parts
   if (!body || !signature) return null
   try {
     const bodyBytes = fromBase64Url(body)

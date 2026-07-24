@@ -1,10 +1,14 @@
+import { env } from 'cloudflare:workers'
 import { describe, expect, it } from 'vitest'
+
 import {
   authorizeAndApprove,
   authorizeUrl,
   createPkcePair,
   exchangeCode,
+  expireAccessToken,
   MCP_ORIGIN,
+  obtainAccessToken,
   registerClient,
   selfFetch,
   sessionCookie,
@@ -18,7 +22,6 @@ describe('discovery', () => {
     expect(metadata.authorization_endpoint).toBe(`${MCP_ORIGIN}/authorize`)
     expect(metadata.token_endpoint).toBe(`${MCP_ORIGIN}/token`)
     expect(metadata.registration_endpoint).toBe(`${MCP_ORIGIN}/register`)
-    expect(metadata.scopes_supported).toContain('transcripts:read')
   })
 
   it('serves protected resource metadata (RFC 9728, required by the MCP spec)', async () => {
@@ -39,6 +42,36 @@ describe('/mcp bearer gate', () => {
     const response = await selfFetch(`${MCP_ORIGIN}/mcp`, {
       method: 'POST',
       headers: { authorization: 'Bearer not-a-real-token' },
+    })
+    expect(response.status).toBe(401)
+  })
+
+  it('rejects a revoked access token', async () => {
+    const userId = 'RevokedTestUserId000000000000001'
+    const clientId = await registerClient()
+    const { verifier, challenge } = await createPkcePair()
+    const code = await authorizeAndApprove(clientId, challenge, sessionCookie(userId))
+    const token = await exchangeCode(clientId, code, verifier)
+    const [, grantId] = token.split(':')
+    if (!grantId) throw new Error('token missing grant id')
+    const oauthEnv = env as typeof env & {
+      OAUTH_PROVIDER: { revokeGrant(grantId: string, userId: string): Promise<void> }
+    }
+    await oauthEnv.OAUTH_PROVIDER.revokeGrant(grantId, userId)
+
+    const response = await selfFetch(`${MCP_ORIGIN}/mcp`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(response.status).toBe(401)
+  })
+
+  it('rejects an expired access token', async () => {
+    const token = await obtainAccessToken('ExpiredTestUserId000000000000001')
+    await expireAccessToken(token)
+    const response = await selfFetch(`${MCP_ORIGIN}/mcp`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}` },
     })
     expect(response.status).toBe(401)
   })
@@ -79,7 +112,6 @@ describe('/authorize', () => {
     expect(location.origin).toBe('https://app.test')
     expect(location.pathname).toBe('/mcp/consent')
     expect(location.searchParams.get('client_name')).toBe('Test Agent')
-    expect(location.searchParams.get('scope')).toBe('transcripts:read')
     expect(location.searchParams.get('state')).toBeTruthy()
   })
 
@@ -87,6 +119,17 @@ describe('/authorize', () => {
     const { challenge } = await createPkcePair()
     const response = await selfFetch(authorizeUrl('ghost-client', challenge), {
       headers: { cookie: sessionCookie('user-unknown-client') },
+      redirect: 'manual',
+    })
+    expect(response.status).toBe(400)
+  })
+
+  it('rejects plain PKCE', async () => {
+    const clientId = await registerClient()
+    const requestUrl = new URL(authorizeUrl(clientId, 'plain-verifier'))
+    requestUrl.searchParams.set('code_challenge_method', 'plain')
+    const response = await selfFetch(requestUrl.toString(), {
+      headers: { cookie: sessionCookie('PlainPkceTestUserId0000000000001') },
       redirect: 'manual',
     })
     expect(response.status).toBe(400)

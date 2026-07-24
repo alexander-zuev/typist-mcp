@@ -1,7 +1,8 @@
 import type { AuthRequest } from '@cloudflare/workers-oauth-provider'
 import type { UserId } from '@typist/core'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { signOAuthState, verifyOAuthState } from '../../src/signed-state'
+
+import { signOAuthState, verifyOAuthState } from '../../src/infrastructure/auth/signed-state'
 
 const SECRET = 'unit-test-secret'
 const USER_ID = '99999999-9999-4999-8999-999999999999' as UserId
@@ -10,7 +11,7 @@ const oauthReq: AuthRequest = {
   responseType: 'code',
   clientId: 'client-1',
   redirectUri: 'https://client.test/callback',
-  scope: ['transcripts:read'],
+  scope: [],
   state: 'client-state',
   codeChallenge: 'challenge',
   codeChallengeMethod: 'S256',
@@ -38,6 +39,11 @@ describe('signed OAuth state', () => {
   it('rejects a state signed with a different secret', async () => {
     const state = await signOAuthState('other-secret', oauthReq, USER_ID)
     expect(await verifyOAuthState(SECRET, state)).toBeNull()
+  })
+
+  it('rejects a valid state with an appended replay-key suffix', async () => {
+    const state = await signOAuthState(SECRET, oauthReq, USER_ID)
+    expect(await verifyOAuthState(SECRET, `${state}.suffix`)).toBeNull()
   })
 
   it('rejects malformed input', async () => {

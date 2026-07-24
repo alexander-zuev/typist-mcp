@@ -1,5 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
+
 import { MCP_ORIGIN, selfFetch } from './oauth'
 
 /** Real MCP SDK client speaking streamable HTTP to the worker under test. */
