@@ -35,7 +35,7 @@ export async function createPkcePair(): Promise<{ verifier: string; challenge: s
   return { verifier, challenge: toBase64Url(new Uint8Array(digest)) }
 }
 
-export async function registerClient(): Promise<string> {
+export async function registerClient(metadata?: Record<string, unknown>): Promise<string> {
   const response = await selfFetch(`${MCP_ORIGIN}/register`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -43,6 +43,7 @@ export async function registerClient(): Promise<string> {
       redirect_uris: [REDIRECT_URI],
       client_name: 'Test Agent',
       token_endpoint_auth_method: 'none',
+      ...metadata,
     }),
   })
   if (response.status !== 201) throw new Error(`register failed: ${response.status}`)

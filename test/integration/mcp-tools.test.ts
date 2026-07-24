@@ -25,11 +25,11 @@ function textOf(result: unknown): string {
 }
 
 describe('tool surface', () => {
-  it('exposes exactly the two read-only tools', async () => {
+  it('exposes exactly the three read-only tools', async () => {
     const mcp = await connectAs('user-tools-list')
     const { tools } = await mcp.listTools()
     const names = tools.map((tool) => tool.name).sort()
-    expect(names).toEqual(['get_transcript', 'search_transcripts'])
+    expect(names).toEqual(['download_transcript', 'read_transcript', 'search_transcripts'])
     for (const tool of tools) {
       expect(tool.annotations?.readOnlyHint).toBe(true)
       expect(tool.annotations?.openWorldHint).toBe(false)
@@ -38,17 +38,26 @@ describe('tool surface', () => {
 })
 
 describe('search_transcripts', () => {
-  it('returns the caller-scoped library as structured + text content', async () => {
-    const mcp = await connectAs('user-search-a')
+  it('lists recent transcripts when query is omitted', async () => {
+    const mcp = await connectAs('user-list-a')
     const result = await mcp.callTool({ name: 'search_transcripts', arguments: {} })
     expect(result.isError).toBeFalsy()
     // The fixture embeds the gateway-received userId — proves the id flows from
-    // the token props, not from anything the client sent.
-    expect(textOf(result)).toContain('owner user-search-a')
+    // the token props, not from anything the client sent — and which RPC ran.
+    expect(textOf(result)).toContain('user-list-a query=none')
     expect(textOf(result)).toContain('LOCKED')
     const structured = result.structuredContent as { items: unknown[]; nextCursor?: string }
     expect(structured.items).toHaveLength(2)
     expect(structured.nextCursor).toBe('cursor-page-2')
+  })
+
+  it('passes a present query through to the gateway', async () => {
+    const mcp = await connectAs('user-search-a')
+    const result = await mcp.callTool({
+      name: 'search_transcripts',
+      arguments: { query: 'copper' },
+    })
+    expect(textOf(result)).toContain('user-search-a query=copper')
   })
 
   it('rejects invalid arguments', async () => {
@@ -64,49 +73,65 @@ describe('search_transcripts', () => {
   })
 })
 
-describe('get_transcript', () => {
+describe('read_transcript', () => {
   it('returns an inline chunk with continuation metadata', async () => {
-    const mcp = await connectAs('user-get-a')
+    const mcp = await connectAs('user-read-a')
     const result = await mcp.callTool({
-      name: 'get_transcript',
+      name: 'read_transcript',
       arguments: { id: VALID_ID },
     })
     expect(result.isError).toBeFalsy()
     const { result: chunk } = result.structuredContent as {
       result: { kind: string; nextOffset?: number; truncated: boolean }
     }
-    expect(chunk.kind).toBe('inline')
+    expect(chunk.kind).toBe('found')
     expect(chunk.truncated).toBe(true)
     expect(chunk.nextOffset).toBe(8000)
+    // Body text must live ONLY in the text content block — structured
+    // duplication would double the response against client output caps.
+    expect('text' in chunk).toBe(false)
     expect(textOf(result)).toContain('offset=0 maxChars=8000 format=txt')
   })
 
   it('honors offset, maxChars, and format', async () => {
-    const mcp = await connectAs('user-get-b')
+    const mcp = await connectAs('user-read-b')
     const result = await mcp.callTool({
-      name: 'get_transcript',
+      name: 'read_transcript',
       arguments: { id: VALID_ID, offset: 8000, maxChars: 20_000, format: 'vtt' },
     })
     expect(textOf(result)).toContain('offset=8000 maxChars=20000 format=vtt')
   })
 
-  it('returns a presigned link for delivery=url', async () => {
-    const mcp = await connectAs('user-get-url')
+  it('maps not_found to a clean tool error', async () => {
+    const mcp = await connectAs('user-read-missing')
     const result = await mcp.callTool({
-      name: 'get_transcript',
-      arguments: { id: VALID_ID, delivery: 'url', format: 'srt' },
+      name: 'read_transcript',
+      arguments: { id: NOT_FOUND_ID },
     })
-    const { result: chunk } = result.structuredContent as {
-      result: { kind: string; url: string }
+    expect(result.isError).toBe(true)
+    expect(textOf(result)).toBe('Transcript not found')
+  })
+})
+
+describe('download_transcript', () => {
+  it('returns a presigned link', async () => {
+    const mcp = await connectAs('user-download-a')
+    const result = await mcp.callTool({
+      name: 'download_transcript',
+      arguments: { id: VALID_ID, format: 'srt' },
+    })
+    const { result: download } = result.structuredContent as {
+      result: { kind: string; url: string; format: string }
     }
-    expect(chunk.kind).toBe('url')
-    expect(chunk.url).toContain('https://r2.test/')
+    expect(download.kind).toBe('found')
+    expect(download.url).toContain('https://r2.test/')
+    expect(download.format).toBe('srt')
   })
 
-  it('maps EntityNotFoundError to a clean not-found tool error', async () => {
-    const mcp = await connectAs('user-get-missing')
+  it('maps not_found to a clean tool error', async () => {
+    const mcp = await connectAs('user-download-missing')
     const result = await mcp.callTool({
-      name: 'get_transcript',
+      name: 'download_transcript',
       arguments: { id: NOT_FOUND_ID },
     })
     expect(result.isError).toBe(true)

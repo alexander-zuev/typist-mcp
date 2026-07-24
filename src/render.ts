@@ -1,4 +1,8 @@
-import type { GetTranscriptResult, SearchTranscriptsResult } from '@typist/core'
+import type {
+  DownloadTranscriptResult,
+  ReadTranscriptResult,
+  TranscriptsPage,
+} from '@typist/core'
 
 /**
  * Compact text renderings of the structured tool results. The text content
@@ -14,7 +18,7 @@ function formatDuration(seconds: number | null): string {
   return `${minutes}:${String(rest).padStart(2, '0')}`
 }
 
-export function renderSearchResult(result: SearchTranscriptsResult): string {
+export function renderTranscriptsPage(result: TranscriptsPage): string {
   if (result.items.length === 0) return 'No transcripts found'
   const lines = result.items.map((item) => {
     const parts = [
@@ -35,12 +39,9 @@ export function renderSearchResult(result: SearchTranscriptsResult): string {
   return [header, ...lines, footer].filter(Boolean).join('\n')
 }
 
-export function renderTranscriptResult(
-  result: Exclude<GetTranscriptResult, { kind: 'not_found' }>,
+export function renderReadResult(
+  result: Exclude<ReadTranscriptResult, { kind: 'not_found' }>,
 ): string {
-  if (result.kind === 'url') {
-    return `${result.displayName}: download ${result.format} at ${result.url} (expires ${result.expiresAt})`
-  }
   const notes: string[] = []
   if (result.locked) notes.push('locked — preview only')
   if (result.truncated && result.nextOffset !== undefined) {
@@ -49,4 +50,10 @@ export function renderTranscriptResult(
     notes.push(`chars ${result.offset}-${result.offset + result.text.length} of ${result.totalChars}, complete`)
   }
   return `${result.displayName} (${notes.join('; ')})\n\n${result.text}`
+}
+
+export function renderDownloadResult(
+  result: Exclude<DownloadTranscriptResult, { kind: 'not_found' }>,
+): string {
+  return `${result.displayName}: download ${result.format} at ${result.url} (expires ${result.expiresAt})`
 }

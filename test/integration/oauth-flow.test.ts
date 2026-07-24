@@ -20,6 +20,13 @@ describe('discovery', () => {
     expect(metadata.registration_endpoint).toBe(`${MCP_ORIGIN}/register`)
     expect(metadata.scopes_supported).toContain('transcripts:read')
   })
+
+  it('serves protected resource metadata (RFC 9728, required by the MCP spec)', async () => {
+    const response = await selfFetch(`${MCP_ORIGIN}/.well-known/oauth-protected-resource`)
+    expect(response.status).toBe(200)
+    const metadata: Record<string, unknown> = await response.json()
+    expect(metadata.authorization_servers).toContain(MCP_ORIGIN)
+  })
 })
 
 describe('/mcp bearer gate', () => {
@@ -146,6 +153,64 @@ describe('/approve', () => {
     expect(location.origin).toBe('https://client.test')
     expect(location.searchParams.get('error')).toBe('access_denied')
     expect(location.searchParams.get('state')).toBe('client-state')
+  })
+
+  it('rejects a replayed state (single use)', async () => {
+    const clientId = await registerClient()
+    const { challenge } = await createPkcePair()
+    const state = await consentState(clientId, challenge, 'user-replay-1')
+    const approve = () =>
+      selfFetch(`${MCP_ORIGIN}/approve`, {
+        method: 'POST',
+        headers: {
+          cookie: sessionCookie('user-replay-1'),
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({ state, decision: 'allow' }),
+        redirect: 'manual',
+      })
+    expect((await approve()).status).toBe(302)
+    expect((await approve()).status).toBe(400)
+  })
+
+  it('recovers a lost session by resuming at the consent page, not the POST URL', async () => {
+    const clientId = await registerClient()
+    const { challenge } = await createPkcePair()
+    const state = await consentState(clientId, challenge, 'user-lost-session')
+    const response = await selfFetch(`${MCP_ORIGIN}/approve`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ state, decision: 'allow' }),
+      redirect: 'manual',
+    })
+    expect(response.status).toBe(302)
+    const signIn = new URL(response.headers.get('location') ?? '')
+    expect(signIn.pathname).toBe('/sign-in')
+    const resume = new URL(signIn.searchParams.get('redirect') ?? '')
+    expect(resume.pathname).toBe('/mcp/consent')
+    expect(resume.searchParams.get('state')).toBe(state)
+  })
+
+  it('rejects non-web client metadata URIs at registration (first line before the consent allowlist)', async () => {
+    await expect(
+      // oxlint-disable-next-line no-script-url -- the attack input under test
+      registerClient({ logo_uri: 'javascript:alert(1)' }),
+    ).rejects.toThrow(/register failed: 400/)
+  })
+
+  it('forwards web client metadata URIs to the consent redirect', async () => {
+    const clientId = await registerClient({
+      logo_uri: 'https://cdn.example/logo.png',
+      client_uri: 'https://legit.example',
+    })
+    const { challenge } = await createPkcePair()
+    const response = await selfFetch(authorizeUrl(clientId, challenge), {
+      headers: { cookie: sessionCookie('user-logo-filter') },
+      redirect: 'manual',
+    })
+    const location = new URL(response.headers.get('location') ?? '')
+    expect(location.searchParams.get('logo_uri')).toBe('https://cdn.example/logo.png')
+    expect(location.searchParams.get('client_uri')).toBe('https://legit.example')
   })
 
   it('rejects an invalid decision value', async () => {

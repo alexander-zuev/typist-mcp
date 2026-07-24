@@ -5,15 +5,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "dotenvx run -- wrangler dev",
     "build": "pnpm run typecheck && pnpm run lint",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint . --quiet",
     "lint:fix": "oxlint . --fix --quiet",
     "test": "vitest run --reporter=dot --silent",
     "test:unit": "vitest run --reporter=dot --silent",
-    "cf-typegen": "wrangler types",
-    "deploy": "wrangler deploy --env preview",
     "deploy:prod": "wrangler deploy --env prod"
   },
   "dependencies": {
@@ -25,6 +23,7 @@
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "catalog:",
+    "@dotenvx/dotenvx": "catalog:",
     "@cloudflare/workers-types": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:",

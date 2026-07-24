@@ -29,7 +29,9 @@
     "ENV": "development",
     "MAIN_APP_URL": "http://localhost:5174",
   },
-  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "typist-mcp-oauth-dev" }],
+  // OAUTH_KV reuses the main app's TYPIST_AUTH namespace (auth state lives
+  // together); workers-oauth-provider keys are prefixed and cannot collide.
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "d10d6cf49ace4aea869b2656a8a98620" }],
   "services": [
     { "binding": "TYPIST_GATEWAY", "service": "typist-dev", "entrypoint": "McpGateway" },
   ],
@@ -50,39 +52,13 @@
         "bindings": [{ "name": "MCP_OBJECT", "class_name": "TypistMcp" }],
       },
     },
-    "preview": {
-      "name": "typist-mcp-preview",
-      "vars": {
-        "ENV": "preview",
-        "MAIN_APP_URL": "https://preview.iamtypist.dev",
-      },
-      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "TBD_PREVIEW_KV_ID" }],
-      "services": [
-        { "binding": "TYPIST_GATEWAY", "service": "typist-preview", "entrypoint": "McpGateway" },
-      ],
-      "durable_objects": {
-        "bindings": [
-          { "name": "MCP_OBJECT", "class_name": "TypistMcp" },
-          { "name": "RATE_LIMITER", "class_name": "RateLimiterDO", "script_name": "typist-preview" },
-        ],
-      },
-      "secrets": {
-        "required": ["MCP_STATE_SECRET"],
-      },
-      "routes": [
-        {
-          "pattern": "mcp-preview.iamtypist.dev",
-          "custom_domain": true,
-        },
-      ],
-    },
     "prod": {
       "name": "typist-mcp",
       "vars": {
         "ENV": "production",
         "MAIN_APP_URL": "https://iamtypist.dev",
       },
-      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "TBD_PROD_KV_ID" }],
+      "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "a76e629b08df4062b629d2bc8ba59215" }],
       "services": [
         { "binding": "TYPIST_GATEWAY", "service": "typist", "entrypoint": "McpGateway" },
       ],

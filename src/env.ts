@@ -7,7 +7,7 @@ import type { McpGatewayContract } from '@typist/core'
  * so the binding is typed here as Fetcher + the frozen contract.
  */
 export interface Env {
-  ENV: 'development' | 'preview' | 'production'
+  ENV: 'development' | 'production'
   /** Origin of the main app — sign-in + consent pages live there. */
   MAIN_APP_URL: string
   /** HMAC key for the authorize→consent→approve state round trip. */

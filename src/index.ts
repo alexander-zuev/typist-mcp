@@ -10,14 +10,14 @@ export { TypistMcp }
  * default handler and lean on the main app for session + consent UI.
  */
 export default new OAuthProvider({
+  // Streamable HTTP only — v1 has no legacy SSE surface.
   apiHandlers: {
     '/mcp': TypistMcp.serve('/mcp'),
-    // Legacy SSE transport for clients that have not moved to streamable HTTP.
-    '/sse': TypistMcp.serveSSE('/sse'),
   },
   defaultHandler: authFlowHandler,
   authorizeEndpoint: '/authorize',
   tokenEndpoint: '/token',
   clientRegistrationEndpoint: '/register',
   scopesSupported: [SUPPORTED_SCOPE],
+  allowPlainPKCE: false,
 })

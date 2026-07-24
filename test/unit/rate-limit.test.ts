@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { GrantRateLimiter } from '../../src/rate-limit'
 
-function fakeNamespace(stub: { checkRateLimit: (...args: unknown[]) => Promise<unknown> }) {
+function fakeNamespace(stub: { checkRateLimit: (...args: unknown[]) => unknown }) {
   return {
     idFromName: () => ({}),
     get: () => stub,
@@ -24,7 +24,10 @@ describe('GrantRateLimiter', () => {
   it('fails open when the DO is unreachable', async () => {
     const limiter = new GrantRateLimiter(
       fakeNamespace({
-        checkRateLimit: async () => {
+        // Synchronous throw: an immediately-rejected promise trips workerd's
+        // eager unhandled-rejection detection during adoption; the failure
+        // surfaces at the same await either way.
+        checkRateLimit: () => {
           throw new Error('DO unreachable')
         },
       }),
