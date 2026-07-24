@@ -1,7 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import {
   downloadTranscriptInputSchema,
-  EntityNotFoundError,
   mcpExportTranscriptionResponseSchema,
   type RateLimiterClient,
   readTranscriptContentSchema,
@@ -89,16 +88,11 @@ export function registerTranscriptTools(context: TranscriptToolContext): void {
     },
     async (input) =>
       executeTool(executionContext, 'download_transcript', async () => {
-        try {
-          const result = await gateway.downloadTranscript(
-            userId,
-            downloadTranscriptInputSchema.parse(input),
-          )
-          return toolSuccess(renderDownloadResult(result), { result })
-        } catch (error) {
-          if (error instanceof EntityNotFoundError) return toolError('Transcript not found')
-          throw error
-        }
+        const result = await gateway.downloadTranscript(
+          userId,
+          downloadTranscriptInputSchema.parse(input),
+        )
+        return toolSuccess(renderDownloadResult(result), { result })
       }),
   )
 }

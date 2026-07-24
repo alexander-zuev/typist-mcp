@@ -1,5 +1,15 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
-import { createLogger, type RateLimiterClient, type UserId } from '@typist/core'
+import {
+  AuthenticationError,
+  BillingError,
+  CaptchaError,
+  createLogger,
+  EntityNotFoundError,
+  RateLimitError,
+  ValidationError,
+  type RateLimiterClient,
+  type UserId,
+} from '@typist/core'
 
 import { TOOL_RATE_LIMITS, type ToolName } from './tool-policy'
 import { toolError } from './tool-result'
@@ -9,6 +19,17 @@ const logger = createLogger('typist-mcp')
 interface ToolExecutionContext {
   rateLimiter: Pick<RateLimiterClient, 'check'>
   userId: UserId
+}
+
+function isExpectedToolError(error: unknown): error is Error {
+  return (
+    error instanceof ValidationError ||
+    error instanceof AuthenticationError ||
+    error instanceof EntityNotFoundError ||
+    error instanceof BillingError ||
+    error instanceof CaptchaError ||
+    error instanceof RateLimitError
+  )
 }
 
 export async function executeTool(
@@ -30,6 +51,8 @@ export async function executeTool(
 
     return await execute()
   } catch (error) {
+    if (isExpectedToolError(error)) return toolError(error.message)
+
     logger.error('mcp_tool_failed', { tool, userId: context.userId, error })
     return toolError('Something went wrong')
   }
