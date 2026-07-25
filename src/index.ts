@@ -4,6 +4,7 @@ import { setLoggerErrorHook } from '@typist/core'
 
 import { authFlowHandler } from './entrypoints/auth-handlers'
 import { TypistMcp } from './entrypoints/mcp-server'
+import { createUserBoundMcpHandler } from './infrastructure/auth/user-bound-mcp-handler'
 import { createMcpServerSentryOptions } from './infrastructure/observability/sentry'
 
 export { TypistMcp }
@@ -23,7 +24,7 @@ setLoggerErrorHook((entry) => {
 const oauthProvider = new OAuthProvider<McpEnv>({
   // Streamable HTTP only — v1 has no legacy SSE surface.
   apiHandlers: {
-    '/mcp': TypistMcp.serve('/mcp'),
+    '/mcp': createUserBoundMcpHandler(TypistMcp.serve('/mcp')),
   },
   defaultHandler: authFlowHandler,
   authorizeEndpoint: '/authorize',

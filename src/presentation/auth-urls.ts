@@ -1,9 +1,21 @@
 import type { ClientInfo } from '@cloudflare/workers-oauth-provider'
+import {
+  MCP_CONSENT_ERROR_PATH,
+  MCP_SIGN_IN_INTENT,
+  type McpConsentErrorReason,
+} from '@typist/core'
 
 export function signInRedirect(mainAppUrl: string, returnTo: string): Response {
   const signIn = new URL('/sign-in', mainAppUrl)
   signIn.searchParams.set('redirect', returnTo)
+  signIn.searchParams.set('intent', MCP_SIGN_IN_INTENT)
   return Response.redirect(signIn.toString(), 302)
+}
+
+export function consentErrorUrl(mainAppUrl: string, reason: McpConsentErrorReason): string {
+  const errorUrl = new URL(MCP_CONSENT_ERROR_PATH, mainAppUrl)
+  errorUrl.searchParams.set('reason', reason)
+  return errorUrl.toString()
 }
 
 /** Builds the consent URL while excluding unsafe client-controlled metadata URLs. */

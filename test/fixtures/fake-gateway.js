@@ -6,8 +6,8 @@ import { DurableObject, WorkerEntrypoint } from 'cloudflare:workers'
  * tests stay declarative:
  * - cookie `typist_session=<userId>` resolves a session; `typist_anon=1` marks it anonymous
  * - transcript id ending in `404` returns a NOT_FOUND error envelope
- * - userId containing `rate-limited` is denied by the rate limiter
- * - userId containing `gateway-down` returns a safe infrastructure error envelope
+ * - userId containing `ratelimited` is denied by the rate limiter
+ * - userId containing `gatewaydown` returns a safe infrastructure error envelope
  */
 
 const NOT_FOUND_ID = '00000000-0000-4000-8000-000000000404'
@@ -66,8 +66,12 @@ export class McpGateway extends WorkerEntrypoint {
     return ok({ userId: match[1], isAnonymous: /typist_anon=1/.test(cookieHeader) })
   }
 
+  async trackConsentAllowed() {
+    return ok(null)
+  }
+
   async searchTranscripts(userId, input) {
-    if (userId.includes('gateway-down')) return unavailable()
+    if (userId.includes('gatewaydown')) return unavailable()
     return ok({
       items: ITEMS(`${userId} query=${input.query ?? 'none'}`),
       nextCursor: input.cursor ? undefined : 'cursor-page-2',
@@ -75,7 +79,7 @@ export class McpGateway extends WorkerEntrypoint {
   }
 
   async readTranscript(userId, input) {
-    if (userId.includes('gateway-down')) return unavailable()
+    if (userId.includes('gatewaydown')) return unavailable()
     if (input.id === NOT_FOUND_ID) return ok({ kind: 'not_found', id: input.id })
     return ok({
       kind: 'found',
@@ -90,7 +94,7 @@ export class McpGateway extends WorkerEntrypoint {
   }
 
   async downloadTranscript(userId, input) {
-    if (userId.includes('gateway-down')) return unavailable()
+    if (userId.includes('gatewaydown')) return unavailable()
     if (input.id === NOT_FOUND_ID) return notFound()
     return ok({
       downloadUrl: 'https://r2.test/export.txt?sig=abc',
@@ -102,7 +106,7 @@ export class McpGateway extends WorkerEntrypoint {
 
 export class FakeRateLimiterDO extends DurableObject {
   async checkRateLimit(key, maxRequests) {
-    if (key.includes('rate-limited')) return { allowed: false, remaining: 0, retryAfter: 30 }
+    if (key.includes('ratelimited')) return { allowed: false, remaining: 0, retryAfter: 30 }
     return { allowed: true, remaining: maxRequests - 1, retryAfter: null }
   }
 }

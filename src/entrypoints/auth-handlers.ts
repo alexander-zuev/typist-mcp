@@ -4,7 +4,11 @@ import { createLogger, InternalServerError } from '@typist/core'
 import { fingerprintOAuthState } from '../infrastructure/auth/oauth-state-replay-store'
 import { signOAuthState, verifyOAuthState } from '../infrastructure/auth/signed-state'
 import { createMcpServerDeps, type McpServerDeps } from '../infrastructure/mcp-server-deps'
-import { consentUrl, signInRedirect } from '../presentation/auth-urls'
+import {
+  consentErrorUrl,
+  consentUrl,
+  signInRedirect,
+} from '../presentation/auth-urls'
 
 const logger = createLogger('mcp-auth-flow')
 
@@ -101,16 +105,17 @@ async function handleApprove(
 
   const verified = await verifyOAuthState(deps.env.MCP_STATE_SECRET, state)
   if (!verified) {
-    return new Response('Consent request expired - start over from your client', { status: 400 })
+    return Response.redirect(consentErrorUrl(deps.env.MAIN_APP_URL, 'expired'), 302)
   }
+
+  const client = await oauth.lookupClient(verified.oauthReq.clientId)
+  if (!client) return new Response('Unknown client', { status: 400 })
 
   const session = await resolveSession(request, deps)
   if (!session || session.isAnonymous) {
     // The session died between consent render and submit. A bare redirect back
     // to this POST URL would land as a GET → 404, so resume at the consent
     // page (the state is still valid and unused).
-    const client = await oauth.lookupClient(verified.oauthReq.clientId)
-    if (!client) return new Response('Unknown client', { status: 400 })
     return signInRedirect(
       deps.env.MAIN_APP_URL,
       consentUrl(deps.env.MAIN_APP_URL, state, client, verified.oauthReq.clientId),
@@ -118,9 +123,10 @@ async function handleApprove(
   }
   if (session.userId !== verified.userId) {
     logger.warn('mcp_consent_user_mismatch', { userId: session.userId })
-    return new Response('Consent request was started by a different user - start over', {
-      status: 403,
-    })
+    return Response.redirect(
+      consentErrorUrl(deps.env.MAIN_APP_URL, 'account-mismatch'),
+      302,
+    )
   }
 
   const stateId = await fingerprintOAuthState(state)
@@ -135,9 +141,10 @@ async function handleApprove(
   // acceptable; the guard exists to stop replay of a captured state.
   if (await deps.stores.oauthStateReplay.wasUsed(state)) {
     logger.warn('mcp_consent_replay_rejected', logContext)
-    return new Response('Consent request already used - start over from your client', {
-      status: 400,
-    })
+    return Response.redirect(
+      consentErrorUrl(deps.env.MAIN_APP_URL, 'already-used'),
+      302,
+    )
   }
   await deps.stores.oauthStateReplay.markUsed(state)
 
@@ -157,5 +164,14 @@ async function handleApprove(
     props: { userId: session.userId },
   })
   logger.info('mcp_consent_allowed', logContext)
+  deps.executionCtx.waitUntil(
+    deps.clients.gateway
+      .trackConsentAllowed(session.userId, {
+        clientName: client.clientName ?? verified.oauthReq.clientId,
+      })
+      .catch((error) => {
+        logger.error('mcp_consent_analytics_failed', { ...logContext, error })
+      }),
+  )
   return Response.redirect(redirectTo, 302)
 }

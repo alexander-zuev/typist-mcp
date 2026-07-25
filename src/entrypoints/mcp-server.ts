@@ -4,17 +4,10 @@ import { AuthenticationError, type UserId } from '@typist/core'
 import { McpAgent } from 'agents/mcp'
 
 import packageJson from '../../package.json' with { type: 'json' }
-import {
-  createMcpServerDeps,
-  type McpServerDeps,
-} from '../infrastructure/mcp-server-deps'
+import type { McpTokenProps } from '../infrastructure/auth/mcp-token-props'
+import { createMcpServerDeps, type McpServerDeps } from '../infrastructure/mcp-server-deps'
 import { createMcpServerDurableObjectSentryOptions } from '../infrastructure/observability/sentry'
 import { registerTranscriptTools } from './tools/transcript-tools'
-
-/** Set by workers-oauth-provider at completeAuthorization; decrypted from the bearer token. */
-interface McpTokenProps extends Record<string, unknown> {
-  userId: UserId
-}
 
 class TypistMcpBase extends McpAgent<McpEnv, unknown, McpTokenProps> {
   server = new McpServer({
@@ -45,7 +38,6 @@ class TypistMcpBase extends McpAgent<McpEnv, unknown, McpTokenProps> {
     if (!userId) throw new AuthenticationError('Missing userId in OAuth token')
     return userId
   }
-
 }
 
 export const TypistMcp = Sentry.instrumentDurableObjectWithSentry(

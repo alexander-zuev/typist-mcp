@@ -41,16 +41,13 @@ export function registerTranscriptTools(context: TranscriptToolContext): void {
         'Search your Typist transcript library by title/topic, category, or date range. ' +
         'Omit query to list recent transcripts. Only completed transcripts are returned; ' +
         'locked ones appear with locked=true and read_transcript serves their preview.',
-      inputSchema: searchTranscriptsInputSchema.shape,
+      inputSchema: searchTranscriptsInputSchema,
       outputSchema: transcriptsPageSchema.shape,
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (input) =>
       executeTool(executionContext, 'search_transcripts', async () => {
-        const result = await gateway.searchTranscripts(
-          userId,
-          searchTranscriptsInputSchema.parse(input),
-        )
+        const result = await gateway.searchTranscripts(userId, input)
         return toolSuccess(renderTranscriptsPage(result), result)
       }),
   )
@@ -63,14 +60,15 @@ export function registerTranscriptTools(context: TranscriptToolContext): void {
         'Read transcript content by id. The transcript text is in the text content ' +
         "block; structured content carries pagination metadata. Pass the previous response's " +
         'nextOffset as offset to continue; raise maxChars (up to 90000) on clients ' +
-        'without small output caps. Supports txt, srt, and vtt.',
-      inputSchema: readTranscriptInputSchema.shape,
+        'without small output caps. includeSegments returns complete segments contained in ' +
+        'the page. Supports txt, srt, and vtt.',
+      inputSchema: readTranscriptInputSchema,
       outputSchema: { result: readTranscriptToolResultSchema },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (input) =>
       executeTool(executionContext, 'read_transcript', async () => {
-        const result = await gateway.readTranscript(userId, readTranscriptInputSchema.parse(input))
+        const result = await gateway.readTranscript(userId, input)
         if (result.kind === 'not_found') return toolError('Transcript not found')
         const { text: _body, ...structured } = result
         return toolSuccess(renderReadResult(result), { result: structured })
@@ -82,16 +80,13 @@ export function registerTranscriptTools(context: TranscriptToolContext): void {
     {
       title: 'Download transcript',
       description: 'Create a one-hour download URL for a transcript in txt, srt, or vtt format.',
-      inputSchema: downloadTranscriptInputSchema.shape,
+      inputSchema: downloadTranscriptInputSchema,
       outputSchema: { result: mcpExportTranscriptionResponseSchema },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (input) =>
       executeTool(executionContext, 'download_transcript', async () => {
-        const result = await gateway.downloadTranscript(
-          userId,
-          downloadTranscriptInputSchema.parse(input),
-        )
+        const result = await gateway.downloadTranscript(userId, input)
         return toolSuccess(renderDownloadResult(result), { result })
       }),
   )

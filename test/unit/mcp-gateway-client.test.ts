@@ -10,6 +10,7 @@ import { McpGatewayClient } from '../../src/infrastructure/clients/mcp-gateway-c
 
 const gateway: McpGatewayContract = {
   getSession: vi.fn(),
+  trackConsentAllowed: vi.fn(),
   searchTranscripts: vi.fn(),
   readTranscript: vi.fn(),
   downloadTranscript: vi.fn(),
@@ -24,6 +25,15 @@ describe('McpGatewayClient', () => {
     vi.mocked(gateway.getSession).mockResolvedValue(ok(session))
 
     await expect(new McpGatewayClient(gateway).getSession('cookie')).resolves.toEqual(session)
+  })
+
+  it('reports completed consent through the gateway', async () => {
+    vi.mocked(gateway.trackConsentAllowed).mockResolvedValue(ok(null))
+    const userId = userIdSchema.parse('b'.repeat(32))
+
+    await expect(
+      new McpGatewayClient(gateway).trackConsentAllowed(userId, { clientName: 'Codex' }),
+    ).resolves.toBeNull()
   })
 
   it('unwraps returned gateway errors', async () => {

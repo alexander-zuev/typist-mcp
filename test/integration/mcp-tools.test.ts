@@ -1,8 +1,8 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { connectMcpClient } from '../helpers/mcp-client'
-import { obtainAccessToken } from '../helpers/oauth'
+import { connectMcpClient, connectMcpSession } from '../helpers/mcp-client'
+import { MCP_ORIGIN, obtainAccessToken, selfFetch } from '../helpers/oauth'
 
 const VALID_ID = '11111111-1111-4111-8111-111111111111'
 // Mirrors NOT_FOUND_ID in test/fixtures/fake-gateway.js (plain JS, not importable here).
@@ -10,13 +10,17 @@ const NOT_FOUND_ID = '00000000-0000-4000-8000-000000000404'
 
 let client: Client | undefined
 
+function testUserId(label: string): string {
+  return label.replaceAll('-', '').padEnd(32, '0').slice(0, 32)
+}
+
 afterEach(async () => {
   await client?.close()
   client = undefined
 })
 
 async function connectAs(userId: string): Promise<Client> {
-  client = await connectMcpClient(await obtainAccessToken(userId))
+  client = await connectMcpClient(await obtainAccessToken(testUserId(userId)))
   return client
 }
 
@@ -45,7 +49,7 @@ describe('search_transcripts', () => {
     expect(result.isError).toBeFalsy()
     // The fixture embeds the gateway-received userId — proves the id flows from
     // the token props, not from anything the client sent — and which RPC ran.
-    expect(textOf(result)).toContain('user-list-a query=none')
+    expect(textOf(result)).toContain(`${testUserId('user-list-a')} query=none`)
     expect(textOf(result)).toContain('LOCKED')
     const structured = result.structuredContent as { items: unknown[]; nextCursor?: string }
     expect(structured.items).toHaveLength(2)
@@ -58,7 +62,7 @@ describe('search_transcripts', () => {
       name: 'search_transcripts',
       arguments: { query: 'copper' },
     })
-    expect(textOf(result)).toContain('user-search-a query=copper')
+    expect(textOf(result)).toContain(`${testUserId('user-search-a')} query=copper`)
   })
 
   it('rejects invalid arguments', async () => {
@@ -71,6 +75,16 @@ describe('search_transcripts', () => {
     } else {
       expect(result.isError).toBe(true)
     }
+  })
+
+  it('rejects an inverted date range at the MCP boundary', async () => {
+    const mcp = await connectAs('user-search-dates')
+    const result = await mcp.callTool({
+      name: 'search_transcripts',
+      arguments: { from: '2026-07-25', to: '2026-07-24' },
+    })
+    expect(result.isError).toBe(true)
+    expect(textOf(result)).toMatch(/from.*on or before.*to/i)
   })
 })
 
@@ -87,11 +101,11 @@ describe('read_transcript', () => {
     }
     expect(chunk.kind).toBe('found')
     expect(chunk.truncated).toBe(true)
-    expect(chunk.nextOffset).toBe(8000)
+    expect(chunk.nextOffset).toBe(2000)
     // Body text must live ONLY in the text content block — structured
     // duplication would double the response against client output caps.
     expect('text' in chunk).toBe(false)
-    expect(textOf(result)).toContain('offset=0 maxChars=8000 format=txt')
+    expect(textOf(result)).toContain('offset=0 maxChars=2000 format=txt')
   })
 
   it('honors offset, maxChars, and format', async () => {
@@ -156,6 +170,28 @@ describe('download_transcript', () => {
 })
 
 describe('failure containment', () => {
+  it('rejects a session id presented by a different authenticated user', async () => {
+    const owner = await connectMcpSession(await obtainAccessToken(testUserId('user-session-owner')))
+    client = owner.client
+    const attackerToken = await obtainAccessToken(testUserId('user-session-attacker'))
+    const response = await selfFetch(`${MCP_ORIGIN}/mcp`, {
+      method: 'POST',
+      headers: {
+        accept: 'application/json, text/event-stream',
+        authorization: `Bearer ${attackerToken}`,
+        'content-type': 'application/json',
+        'mcp-session-id': owner.transport.sessionId!,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'search_transcripts', arguments: {} },
+      }),
+    })
+    expect(response.status).toBe(404)
+  })
+
   it('never leaks internal gateway errors to the agent', async () => {
     const mcp = await connectAs('user-gateway-down')
     const result = await mcp.callTool({ name: 'search_transcripts', arguments: {} })

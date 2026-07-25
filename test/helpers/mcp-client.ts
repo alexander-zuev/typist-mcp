@@ -3,8 +3,13 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 
 import { MCP_ORIGIN, selfFetch } from './oauth'
 
+export interface McpTestSession {
+  client: Client
+  transport: StreamableHTTPClientTransport
+}
+
 /** Real MCP SDK client speaking streamable HTTP to the worker under test. */
-export async function connectMcpClient(accessToken: string): Promise<Client> {
+export async function connectMcpSession(accessToken: string): Promise<McpTestSession> {
   const transport = new StreamableHTTPClientTransport(new URL('/mcp', MCP_ORIGIN), {
     // Swallow the AbortErrors the transport triggers when closing its SSE
     // streams — they surface as unhandled rejections in the workers pool.
@@ -22,5 +27,9 @@ export async function connectMcpClient(accessToken: string): Promise<Client> {
   })
   const client = new Client({ name: 'test-client', version: '1.0.0' })
   await client.connect(transport)
-  return client
+  return { client, transport }
+}
+
+export async function connectMcpClient(accessToken: string): Promise<Client> {
+  return (await connectMcpSession(accessToken)).client
 }

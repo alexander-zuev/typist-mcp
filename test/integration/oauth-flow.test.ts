@@ -87,6 +87,7 @@ describe('/authorize', () => {
     expect(location.origin).toBe('https://app.test')
     expect(location.pathname).toBe('/sign-in')
     expect(location.searchParams.get('redirect')).toContain('/authorize')
+    expect(location.searchParams.get('intent')).toBe('mcp-connect')
   })
 
   it('redirects anonymous sessions to sign-in (anon gate)', async () => {
@@ -159,8 +160,14 @@ describe('/approve', () => {
         'content-type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({ state: `${state}x`, decision: 'allow' }),
+      redirect: 'manual',
     })
-    expect(response.status).toBe(400)
+    const location = new URL(response.headers.get('location') ?? '')
+    expect([response.status, location.pathname, location.searchParams.get('reason')]).toEqual([
+      302,
+      '/mcp/consent/error',
+      'expired',
+    ])
   })
 
   it('rejects a state minted for a different user (consent CSRF guard)', async () => {
@@ -174,8 +181,14 @@ describe('/approve', () => {
         'content-type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({ state, decision: 'allow' }),
+      redirect: 'manual',
     })
-    expect(response.status).toBe(403)
+    const location = new URL(response.headers.get('location') ?? '')
+    expect([response.status, location.pathname, location.searchParams.get('reason')]).toEqual([
+      302,
+      '/mcp/consent/error',
+      'account-mismatch',
+    ])
   })
 
   it('redirects deny back to the client with access_denied', async () => {
@@ -213,7 +226,13 @@ describe('/approve', () => {
         redirect: 'manual',
       })
     expect((await approve()).status).toBe(302)
-    expect((await approve()).status).toBe(400)
+    const replay = await approve()
+    const location = new URL(replay.headers.get('location') ?? '')
+    expect([replay.status, location.pathname, location.searchParams.get('reason')]).toEqual([
+      302,
+      '/mcp/consent/error',
+      'already-used',
+    ])
   })
 
   it('recovers a lost session by resuming at the consent page, not the POST URL', async () => {
@@ -273,7 +292,11 @@ describe('full connect flow', () => {
   it('issues a working access token via DCR + PKCE + consent', async () => {
     const clientId = await registerClient()
     const { verifier, challenge } = await createPkcePair()
-    const code = await authorizeAndApprove(clientId, challenge, sessionCookie('user-happy-1'))
+    const code = await authorizeAndApprove(
+      clientId,
+      challenge,
+      sessionCookie('OAuthHappyUser000000000000000001'),
+    )
     const token = await exchangeCode(clientId, code, verifier)
     expect(token).toBeTruthy()
 

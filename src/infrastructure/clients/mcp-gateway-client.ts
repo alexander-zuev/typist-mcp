@@ -2,6 +2,7 @@ import {
   unwrapResult,
   type DownloadTranscriptInput,
   type ExportTranscriptionResponse,
+  type McpConsentAllowedInput,
   type McpGatewayContract,
   type McpSession,
   type ReadTranscriptInput,
@@ -17,6 +18,10 @@ export class McpGatewayClient {
 
   getSession(cookieHeader: string): Promise<McpSession | null> {
     return unwrapResult<McpSession | null>(this.gateway.getSession(cookieHeader))
+  }
+
+  trackConsentAllowed(userId: UserId, input: McpConsentAllowedInput): Promise<null> {
+    return unwrapResult<null>(this.gateway.trackConsentAllowed(userId, input))
   }
 
   searchTranscripts(
