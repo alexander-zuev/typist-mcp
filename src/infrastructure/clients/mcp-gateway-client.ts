@@ -2,7 +2,6 @@ import {
   unwrapResult,
   type DownloadTranscriptInput,
   type ExportTranscriptionResponse,
-  type McpConsentAllowedInput,
   type McpGatewayContract,
   type McpSession,
   type ReadTranscriptInput,
@@ -20,21 +19,11 @@ export class McpGatewayClient {
     return unwrapResult<McpSession | null>(this.gateway.getSession(cookieHeader))
   }
 
-  trackConsentAllowed(userId: UserId, input: McpConsentAllowedInput): Promise<null> {
-    return unwrapResult<null>(this.gateway.trackConsentAllowed(userId, input))
-  }
-
-  searchTranscripts(
-    userId: UserId,
-    input: SearchTranscriptsInput,
-  ): Promise<TranscriptsPage> {
+  searchTranscripts(userId: UserId, input: SearchTranscriptsInput): Promise<TranscriptsPage> {
     return unwrapResult<TranscriptsPage>(this.gateway.searchTranscripts(userId, input))
   }
 
-  readTranscript(
-    userId: UserId,
-    input: ReadTranscriptInput,
-  ): Promise<ReadTranscriptResult> {
+  readTranscript(userId: UserId, input: ReadTranscriptInput): Promise<ReadTranscriptResult> {
     return unwrapResult<ReadTranscriptResult>(this.gateway.readTranscript(userId, input))
   }
 
@@ -42,8 +31,6 @@ export class McpGatewayClient {
     userId: UserId,
     input: DownloadTranscriptInput,
   ): Promise<ExportTranscriptionResponse> {
-    return unwrapResult<ExportTranscriptionResponse>(
-      this.gateway.downloadTranscript(userId, input),
-    )
+    return unwrapResult<ExportTranscriptionResponse>(this.gateway.downloadTranscript(userId, input))
   }
 }

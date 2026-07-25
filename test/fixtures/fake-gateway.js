@@ -66,10 +66,6 @@ export class McpGateway extends WorkerEntrypoint {
     return ok({ userId: match[1], isAnonymous: /typist_anon=1/.test(cookieHeader) })
   }
 
-  async trackConsentAllowed() {
-    return ok(null)
-  }
-
   async searchTranscripts(userId, input) {
     if (userId.includes('gatewaydown')) return unavailable()
     return ok({
