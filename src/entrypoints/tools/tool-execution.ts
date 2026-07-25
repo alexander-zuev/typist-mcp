@@ -5,6 +5,9 @@ import {
   CaptchaError,
   createLogger,
   EntityNotFoundError,
+  mcpToolCalled,
+  type McpToolErrorCode,
+  type PostHogAnalyticsService,
   RateLimitError,
   ValidationError,
   type RateLimiterClient,
@@ -17,19 +20,33 @@ import { toolError } from './tool-result'
 const logger = createLogger('typist-mcp')
 
 interface ToolExecutionContext {
+  analytics: PostHogAnalyticsService
   rateLimiter: Pick<RateLimiterClient, 'check'>
   userId: UserId
 }
 
-function isExpectedToolError(error: unknown): error is Error {
-  return (
-    error instanceof ValidationError ||
-    error instanceof AuthenticationError ||
-    error instanceof EntityNotFoundError ||
-    error instanceof BillingError ||
-    error instanceof CaptchaError ||
-    error instanceof RateLimitError
-  )
+interface ExpectedToolError {
+  code: McpToolErrorCode
+  message: string
+}
+
+function expectedToolError(error: unknown): ExpectedToolError | null {
+  if (error instanceof ValidationError || error instanceof CaptchaError) {
+    return { code: 'invalid_input', message: error.message }
+  }
+  if (error instanceof AuthenticationError) {
+    return { code: 'unauthenticated', message: error.message }
+  }
+  if (error instanceof EntityNotFoundError) {
+    return { code: 'not_found', message: error.message }
+  }
+  if (error instanceof BillingError) {
+    return { code: 'billing_blocked', message: error.message }
+  }
+  if (error instanceof RateLimitError) {
+    return { code: 'rate_limited', message: error.message }
+  }
+  return null
 }
 
 export async function executeTool(
@@ -46,14 +63,24 @@ export async function executeTool(
     )
     if (!allowed) {
       logger.info('mcp_tool_rate_limited', { tool, userId: context.userId })
+      context.analytics.track(
+        mcpToolCalled({ tool, outcome: 'error', error_code: 'rate_limited' }),
+        context.userId,
+      )
       return toolError(`Rate limit exceeded. Retry in ${retryAfter} seconds.`)
     }
 
-    return await execute()
+    const result = await execute()
+    context.analytics.track(mcpToolCalled({ tool, outcome: 'success' }), context.userId)
+    return result
   } catch (error) {
-    if (isExpectedToolError(error)) return toolError(error.message)
-
-    logger.error('mcp_tool_failed', { tool, userId: context.userId, error })
-    return toolError('Something went wrong')
+    const expected = expectedToolError(error)
+    const errorCode = expected?.code ?? 'internal_error'
+    if (!expected) logger.error('mcp_tool_failed', { tool, userId: context.userId, error })
+    context.analytics.track(
+      mcpToolCalled({ tool, outcome: 'error', error_code: errorCode }),
+      context.userId,
+    )
+    return toolError(expected?.message ?? 'Something went wrong')
   }
 }

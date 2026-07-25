@@ -37,7 +37,7 @@
     { "binding": "TYPIST_GATEWAY", "service": "typist-dev", "entrypoint": "McpGateway" },
   ],
   "secrets": {
-    "required": ["MCP_STATE_SECRET"],
+    "required": ["MCP_STATE_SECRET", "POSTHOG_API_KEY"],
   },
   "env": {
     "prod": {
@@ -58,7 +58,7 @@
         ],
       },
       "secrets": {
-        "required": ["MCP_STATE_SECRET"],
+        "required": ["MCP_STATE_SECRET", "POSTHOG_API_KEY"],
       },
       "routes": [
         {

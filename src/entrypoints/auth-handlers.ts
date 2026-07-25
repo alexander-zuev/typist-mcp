@@ -1,14 +1,17 @@
 import type { OAuthHelpers } from '@cloudflare/workers-oauth-provider'
-import { createLogger, InternalServerError } from '@typist/core'
+import * as Sentry from '@sentry/cloudflare'
+import {
+  createLogger,
+  InternalServerError,
+  mcpConsentAllowed,
+  mcpConsentDenied,
+  mcpConsentFailed,
+} from '@typist/core'
 
 import { fingerprintOAuthState } from '../infrastructure/auth/oauth-state-replay-store'
 import { signOAuthState, verifyOAuthState } from '../infrastructure/auth/signed-state'
 import { createMcpServerDeps, type McpServerDeps } from '../infrastructure/mcp-server-deps'
-import {
-  consentErrorUrl,
-  consentUrl,
-  signInRedirect,
-} from '../presentation/auth-urls'
+import { consentErrorUrl, consentUrl, signInRedirect } from '../presentation/auth-urls'
 
 const logger = createLogger('mcp-auth-flow')
 
@@ -42,13 +45,14 @@ export const authFlowHandler: ExportedHandler<McpEnv> = {
 
     const deps = createMcpServerDeps(env, ctx)
     const oauth = env.OAUTH_PROVIDER
+    const requestId = crypto.randomUUID()
 
     const url = new URL(request.url)
     if (request.method === 'GET' && url.pathname === '/authorize') {
       return handleAuthorize(request, deps, oauth)
     }
     if (request.method === 'POST' && url.pathname === '/approve') {
-      return handleApprove(request, deps, oauth)
+      return handleApprove(request, deps, oauth, requestId)
     }
     // log the request/warn/erorr - since it's not expected?
     return new Response('Not found', { status: 404 })
@@ -83,18 +87,17 @@ async function handleAuthorize(
   if (!session || session.isAnonymous) {
     return signInRedirect(deps.env.MAIN_APP_URL, request.url)
   }
+  Sentry.setUser({ id: session.userId })
 
   const state = await signOAuthState(deps.env.MCP_STATE_SECRET, oauthReq, session.userId)
-  return Response.redirect(
-    consentUrl(deps.env.MAIN_APP_URL, state, client, oauthReq.clientId),
-    302,
-  )
+  return Response.redirect(consentUrl(deps.env.MAIN_APP_URL, state, client, oauthReq.clientId), 302)
 }
 
 async function handleApprove(
   request: Request,
   deps: McpServerDeps,
   oauth: OAuthHelpers,
+  requestId: string,
 ): Promise<Response> {
   const form = await request.formData()
   const state = form.get('state')
@@ -105,11 +108,21 @@ async function handleApprove(
 
   const verified = await verifyOAuthState(deps.env.MCP_STATE_SECRET, state)
   if (!verified) {
+    const attemptId = await fingerprintOAuthState(state)
+    deps.services.analytics.trackAnonymous(
+      mcpConsentFailed({
+        attempt_id: attemptId,
+        reason: 'expired_or_invalid_state',
+        request_id: requestId,
+      }),
+      attemptId,
+    )
     return Response.redirect(consentErrorUrl(deps.env.MAIN_APP_URL, 'expired'), 302)
   }
 
   const client = await oauth.lookupClient(verified.oauthReq.clientId)
   if (!client) return new Response('Unknown client', { status: 400 })
+  const clientName = client.clientName ?? verified.oauthReq.clientId
 
   const session = await resolveSession(request, deps)
   if (!session || session.isAnonymous) {
@@ -122,12 +135,21 @@ async function handleApprove(
     )
   }
   if (session.userId !== verified.userId) {
+    Sentry.setUser({ id: session.userId })
     logger.warn('mcp_consent_user_mismatch', { userId: session.userId })
-    return Response.redirect(
-      consentErrorUrl(deps.env.MAIN_APP_URL, 'account-mismatch'),
-      302,
+    const attemptId = await fingerprintOAuthState(state)
+    deps.services.analytics.track(
+      mcpConsentFailed({
+        attempt_id: attemptId,
+        client_name: clientName,
+        reason: 'account_mismatch',
+        request_id: requestId,
+      }),
+      session.userId,
     )
+    return Response.redirect(consentErrorUrl(deps.env.MAIN_APP_URL, 'account-mismatch'), 302)
   }
+  Sentry.setUser({ id: session.userId })
 
   const stateId = await fingerprintOAuthState(state)
   const logContext = {
@@ -141,10 +163,16 @@ async function handleApprove(
   // acceptable; the guard exists to stop replay of a captured state.
   if (await deps.stores.oauthStateReplay.wasUsed(state)) {
     logger.warn('mcp_consent_replay_rejected', logContext)
-    return Response.redirect(
-      consentErrorUrl(deps.env.MAIN_APP_URL, 'already-used'),
-      302,
+    deps.services.analytics.track(
+      mcpConsentFailed({
+        attempt_id: stateId,
+        client_name: clientName,
+        reason: 'already_used',
+        request_id: requestId,
+      }),
+      session.userId,
     )
+    return Response.redirect(consentErrorUrl(deps.env.MAIN_APP_URL, 'already-used'), 302)
   }
   await deps.stores.oauthStateReplay.markUsed(state)
 
@@ -153,6 +181,14 @@ async function handleApprove(
     denied.searchParams.set('error', 'access_denied')
     if (verified.oauthReq.state) denied.searchParams.set('state', verified.oauthReq.state)
     logger.info('mcp_consent_denied', logContext)
+    deps.services.analytics.track(
+      mcpConsentDenied({
+        attempt_id: stateId,
+        client_name: clientName,
+        request_id: requestId,
+      }),
+      session.userId,
+    )
     return Response.redirect(denied.toString(), 302)
   }
 
@@ -164,14 +200,13 @@ async function handleApprove(
     props: { userId: session.userId },
   })
   logger.info('mcp_consent_allowed', logContext)
-  deps.executionCtx.waitUntil(
-    deps.clients.gateway
-      .trackConsentAllowed(session.userId, {
-        clientName: client.clientName ?? verified.oauthReq.clientId,
-      })
-      .catch((error) => {
-        logger.error('mcp_consent_analytics_failed', { ...logContext, error })
-      }),
+  deps.services.analytics.track(
+    mcpConsentAllowed({
+      attempt_id: stateId,
+      client_name: clientName,
+      request_id: requestId,
+    }),
+    session.userId,
   )
   return Response.redirect(redirectTo, 302)
 }

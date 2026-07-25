@@ -1,6 +1,6 @@
 import OAuthProvider from '@cloudflare/workers-oauth-provider'
 import * as Sentry from '@sentry/cloudflare'
-import { setLoggerErrorHook } from '@typist/core'
+import { runWithAnalyticsContext, setLoggerErrorHook, UUIDSchema } from '@typist/core'
 
 import { authFlowHandler } from './entrypoints/auth-handlers'
 import { TypistMcp } from './entrypoints/mcp-server'
@@ -35,6 +35,9 @@ const oauthProvider = new OAuthProvider<McpEnv>({
 
 export default Sentry.withSentry(createMcpServerSentryOptions, {
   fetch(request, env, ctx) {
-    return oauthProvider.fetch(request, env, ctx)
+    return runWithAnalyticsContext(
+      { idempotencyKey: { uuid: UUIDSchema.parse(crypto.randomUUID()) } },
+      () => oauthProvider.fetch(request, env, ctx),
+    )
   },
 }) satisfies ExportedHandler<McpEnv>

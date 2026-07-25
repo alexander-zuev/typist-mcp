@@ -1,7 +1,13 @@
-import { KVClient, RateLimiterClient, type McpGatewayContract } from '@typist/core'
+import {
+  KVClient,
+  RateLimiterClient,
+  type McpGatewayContract,
+  type PostHogAnalyticsService,
+} from '@typist/core'
 
-import { McpGatewayClient } from './clients/mcp-gateway-client'
+import { createAnalyticsService } from './analytics/create-analytics-service'
 import { OAuthStateReplayStore } from './auth/oauth-state-replay-store'
+import { McpGatewayClient } from './clients/mcp-gateway-client'
 
 export interface McpServerExecutionContext {
   waitUntil(promise: Promise<unknown>): void
@@ -15,6 +21,9 @@ export interface McpServerDeps {
   }
   clients: {
     gateway: McpGatewayClient
+  }
+  services: {
+    analytics: PostHogAnalyticsService
   }
   dos: {
     rateLimiter: RateLimiterClient
@@ -37,6 +46,9 @@ export function createMcpServerDeps(
     },
     clients: {
       gateway: new McpGatewayClient(gateway),
+    },
+    services: {
+      analytics: createAnalyticsService(env, executionCtx),
     },
     dos: {
       rateLimiter: new RateLimiterClient(env.RATE_LIMITER),

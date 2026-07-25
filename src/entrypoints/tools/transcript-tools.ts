@@ -1,7 +1,9 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import {
   downloadTranscriptInputSchema,
+  EntityNotFoundError,
   mcpExportTranscriptionResponseSchema,
+  type PostHogAnalyticsService,
   type RateLimiterClient,
   readTranscriptContentSchema,
   readTranscriptInputSchema,
@@ -17,11 +19,12 @@ import {
   renderTranscriptsPage,
 } from '../../presentation/tool-result-renderers'
 import { executeTool } from './tool-execution'
-import { toolError, toolSuccess } from './tool-result'
+import { toolSuccess } from './tool-result'
 
 const readTranscriptToolResultSchema = readTranscriptContentSchema.omit({ text: true })
 
 interface TranscriptToolContext {
+  analytics: PostHogAnalyticsService
   server: McpServer
   gateway: McpGatewayClient
   rateLimiter: Pick<RateLimiterClient, 'check'>
@@ -30,8 +33,8 @@ interface TranscriptToolContext {
 
 /** Registers the complete read-only transcript tool surface. */
 export function registerTranscriptTools(context: TranscriptToolContext): void {
-  const { server, gateway, rateLimiter, userId } = context
-  const executionContext = { rateLimiter, userId }
+  const { analytics, server, gateway, rateLimiter, userId } = context
+  const executionContext = { analytics, rateLimiter, userId }
 
   server.registerTool(
     'search_transcripts',
@@ -69,7 +72,9 @@ export function registerTranscriptTools(context: TranscriptToolContext): void {
     async (input) =>
       executeTool(executionContext, 'read_transcript', async () => {
         const result = await gateway.readTranscript(userId, input)
-        if (result.kind === 'not_found') return toolError('Transcript not found')
+        if (result.kind === 'not_found') {
+          throw new EntityNotFoundError('Transcript not found')
+        }
         const { text: _body, ...structured } = result
         return toolSuccess(renderReadResult(result), { result: structured })
       }),
