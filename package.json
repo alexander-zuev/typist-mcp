@@ -5,6 +5,7 @@
   "description": "Remote MCP server for Typist — gives AI agents read access to your transcript library",
   "type": "module",
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks",
     "cf-typegen": "wrangler types --env-interface McpEnv",
     "cf-typegen:check": "wrangler types --env-interface McpEnv --check",
     "dev": "dotenvx run -- wrangler dev",
@@ -12,6 +13,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "oxlint . --quiet",
     "lint:fix": "oxlint . --fix --quiet",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
     "test": "vitest run --reporter=dot --silent",
     "test:unit": "vitest run --reporter=dot --silent",
     "deploy:prod": "wrangler deploy --env prod"
@@ -28,9 +31,20 @@
     "@cloudflare/vitest-pool-workers": "catalog:",
     "@dotenvx/dotenvx": "catalog:",
     "@types/node": "catalog:",
+    "lint-staged": "catalog:",
+    "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",
     "wrangler": "catalog:"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}": [
+      "oxfmt --write --no-error-on-unmatched-pattern",
+      "oxlint --fix"
+    ],
+    "*.{json,jsonc,yaml,yml,md,css}": [
+      "oxfmt --write --no-error-on-unmatched-pattern"
+    ]
   }
 }
