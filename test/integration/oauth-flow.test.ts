@@ -113,6 +113,7 @@ describe('/authorize', () => {
     expect(location.origin).toBe('https://app.test')
     expect(location.pathname).toBe('/mcp/consent')
     expect(location.searchParams.get('client_name')).toBe('Test Agent')
+    expect(location.searchParams.get('client_id')).toBe(clientId)
     expect(location.searchParams.get('state')).toBeTruthy()
   })
 

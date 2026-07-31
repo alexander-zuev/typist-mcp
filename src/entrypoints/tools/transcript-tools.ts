@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import {
   downloadTranscriptInputSchema,
   EntityNotFoundError,
+  type McpClientIdentity,
   mcpExportTranscriptionResponseSchema,
   type PostHogAnalyticsService,
   type RateLimiterClient,
@@ -29,12 +30,13 @@ interface TranscriptToolContext {
   gateway: McpGatewayClient
   rateLimiter: Pick<RateLimiterClient, 'check'>
   userId: UserId
+  client: McpClientIdentity
 }
 
 /** Registers the complete read-only transcript tool surface. */
 export function registerTranscriptTools(context: TranscriptToolContext): void {
-  const { analytics, server, gateway, rateLimiter, userId } = context
-  const executionContext = { analytics, rateLimiter, userId }
+  const { analytics, server, gateway, rateLimiter, userId, client } = context
+  const executionContext = { analytics, rateLimiter, userId, client }
 
   server.registerTool(
     'search_transcripts',

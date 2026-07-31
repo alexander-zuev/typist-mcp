@@ -141,6 +141,7 @@ async function handleApprove(
     deps.services.analytics.track(
       mcpConsentFailed({
         attempt_id: attemptId,
+        client_id: verified.oauthReq.clientId,
         client_name: clientName,
         reason: 'account_mismatch',
         request_id: requestId,
@@ -166,6 +167,7 @@ async function handleApprove(
     deps.services.analytics.track(
       mcpConsentFailed({
         attempt_id: stateId,
+        client_id: verified.oauthReq.clientId,
         client_name: clientName,
         reason: 'already_used',
         request_id: requestId,
@@ -184,6 +186,7 @@ async function handleApprove(
     deps.services.analytics.track(
       mcpConsentDenied({
         attempt_id: stateId,
+        client_id: verified.oauthReq.clientId,
         client_name: clientName,
         request_id: requestId,
       }),
@@ -197,12 +200,17 @@ async function handleApprove(
     userId: session.userId,
     metadata: {},
     scope: [],
-    props: { userId: session.userId },
+    props: {
+      userId: session.userId,
+      clientId: verified.oauthReq.clientId,
+      clientName,
+    },
   })
   logger.info('mcp_consent_allowed', logContext)
   deps.services.analytics.track(
     mcpConsentAllowed({
       attempt_id: stateId,
+      client_id: verified.oauthReq.clientId,
       client_name: clientName,
       request_id: requestId,
     }),

@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/cloudflare'
 import {
   AuthenticationError,
   createLogger,
+  type McpClientIdentity,
   mcpConnectionInitialized,
   runWithAnalyticsContext,
   UUIDSchema,
@@ -40,25 +41,32 @@ class TypistMcpBase extends McpAgent<McpEnv, unknown, McpTokenProps> {
 
   async init() {
     const userId = this.userId()
+    const client = this.clientIdentity()
     registerTranscriptTools({
       analytics: this.deps.services.analytics,
       server: this.server,
       gateway: this.deps.clients.gateway,
       rateLimiter: this.deps.dos.rateLimiter,
       userId,
+      client,
     })
     this.server.server.oninitialized = () => {
-      const client = this.server.server.getClientVersion()
-      if (!client) {
+      const handshake = this.server.server.getClientVersion()
+      if (!handshake) {
         logger.warn('mcp_initialize_request_unavailable', { userId })
         return
       }
 
       this.deps.services.analytics.track(
-        mcpConnectionInitialized({ client_name: client.name }),
+        mcpConnectionInitialized({ ...client, mcp_client_name: handshake.name }),
         userId,
       )
     }
+  }
+
+  /** OAuth registration identity, absent on grants issued before it was recorded. */
+  private clientIdentity(): McpClientIdentity {
+    return { client_id: this.props?.clientId, client_name: this.props?.clientName }
   }
 
   private userId(): UserId {

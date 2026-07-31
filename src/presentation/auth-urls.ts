@@ -27,6 +27,7 @@ export function consentUrl(
 ): string {
   const consent = new URL('/mcp/consent', mainAppUrl)
   consent.searchParams.set('state', state)
+  consent.searchParams.set('client_id', clientId)
   consent.searchParams.set('client_name', client.clientName ?? clientId)
   if (isWebUrl(client.logoUri)) consent.searchParams.set('logo_uri', client.logoUri)
   if (isWebUrl(client.clientUri)) consent.searchParams.set('client_uri', client.clientUri)

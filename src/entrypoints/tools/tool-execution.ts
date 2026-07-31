@@ -5,6 +5,7 @@ import {
   CaptchaError,
   createLogger,
   EntityNotFoundError,
+  type McpClientIdentity,
   mcpToolCalled,
   type McpToolErrorCode,
   type PostHogAnalyticsService,
@@ -23,6 +24,7 @@ interface ToolExecutionContext {
   analytics: PostHogAnalyticsService
   rateLimiter: Pick<RateLimiterClient, 'check'>
   userId: UserId
+  client: McpClientIdentity
 }
 
 interface ExpectedToolError {
@@ -64,21 +66,24 @@ export async function executeTool(
     if (!allowed) {
       logger.info('mcp_tool_rate_limited', { tool, userId: context.userId })
       context.analytics.track(
-        mcpToolCalled({ tool, outcome: 'error', error_code: 'rate_limited' }),
+        mcpToolCalled({ ...context.client, tool, outcome: 'error', error_code: 'rate_limited' }),
         context.userId,
       )
       return toolError(`Rate limit exceeded. Retry in ${retryAfter} seconds.`)
     }
 
     const result = await execute()
-    context.analytics.track(mcpToolCalled({ tool, outcome: 'success' }), context.userId)
+    context.analytics.track(
+      mcpToolCalled({ ...context.client, tool, outcome: 'success' }),
+      context.userId,
+    )
     return result
   } catch (error) {
     const expected = expectedToolError(error)
     const errorCode = expected?.code ?? 'internal_error'
     if (!expected) logger.error('mcp_tool_failed', { tool, userId: context.userId, error })
     context.analytics.track(
-      mcpToolCalled({ tool, outcome: 'error', error_code: errorCode }),
+      mcpToolCalled({ ...context.client, tool, outcome: 'error', error_code: errorCode }),
       context.userId,
     )
     return toolError(expected?.message ?? 'Something went wrong')
