@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "catalog:",
+    "@cloudflare/workers-types": "catalog:",
     "@dotenvx/dotenvx": "catalog:",
     "@types/node": "catalog:",
     "lint-staged": "catalog:",
