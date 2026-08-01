@@ -12,6 +12,7 @@ import { fingerprintOAuthState } from '../infrastructure/auth/oauth-state-replay
 import { signOAuthState, verifyOAuthState } from '../infrastructure/auth/signed-state'
 import { createMcpServerDeps, type McpServerDeps } from '../infrastructure/mcp-server-deps'
 import { consentErrorUrl, consentUrl, signInRedirect } from '../presentation/auth-urls'
+import { rootPageResponse } from '../presentation/root-page'
 
 const logger = createLogger('mcp-auth-flow')
 
@@ -48,6 +49,9 @@ export const authFlowHandler: ExportedHandler<McpEnv> = {
     const requestId = crypto.randomUUID()
 
     const url = new URL(request.url)
+    if (request.method === 'GET' && url.pathname === '/') {
+      return rootPageResponse(request, deps.env.MAIN_APP_URL)
+    }
     if (request.method === 'GET' && url.pathname === '/authorize') {
       return handleAuthorize(request, deps, oauth)
     }
