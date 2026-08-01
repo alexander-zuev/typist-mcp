@@ -81,11 +81,16 @@ export class McpGateway extends WorkerEntrypoint {
       kind: 'found',
       id: input.id,
       ...META,
-      text: `chunk for ${userId} offset=${input.offset} maxChars=${input.maxChars} format=${input.format}`,
+      // Mirrors the real gateway: with includeSegments the timestamps are woven into
+      // the rendered text itself, not returned as a separate index to reassemble.
+      text: `${input.includeSegments ? '[0:00] ' : ''}chunk for ${userId} offset=${input.offset} maxChars=${input.maxChars} format=${input.format}`,
       offset: input.offset,
       nextOffset: input.offset === 0 ? input.maxChars : undefined,
       totalChars: 100_000,
       truncated: input.offset === 0,
+      ...(input.includeSegments
+        ? { segments: [{ id: 0, start: 0, end: 1.5, text: 'chunk for', speakerId: 'A' }] }
+        : {}),
     })
   }
 

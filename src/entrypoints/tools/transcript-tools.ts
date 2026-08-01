@@ -6,7 +6,6 @@ import {
   mcpExportTranscriptionResponseSchema,
   type PostHogAnalyticsService,
   type RateLimiterClient,
-  readTranscriptContentSchema,
   readTranscriptInputSchema,
   searchTranscriptsInputSchema,
   transcriptsPageSchema,
@@ -20,9 +19,7 @@ import {
   renderTranscriptsPage,
 } from '../../presentation/tool-result-renderers'
 import { executeTool } from './tool-execution'
-import { toolSuccess } from './tool-result'
-
-const readTranscriptToolResultSchema = readTranscriptContentSchema.omit({ text: true })
+import { toolSuccess, toolText } from './tool-result'
 
 interface TranscriptToolContext {
   analytics: PostHogAnalyticsService
@@ -62,13 +59,13 @@ export function registerTranscriptTools(context: TranscriptToolContext): void {
     {
       title: 'Read transcript',
       description:
-        'Read transcript content by id. The transcript text is in the text content ' +
-        "block; structured content carries pagination metadata. Pass the previous response's " +
-        'nextOffset as offset to continue; raise maxChars (up to 90000) on clients ' +
-        'without small output caps. includeSegments returns complete segments contained in ' +
-        'the page. Supports txt, srt, and vtt.',
+        'Read transcript content by id. Returns YAML front matter (title, offset, chars, ' +
+        'totalChars, truncated, nextOffset when more remains, locked) followed by the ' +
+        'transcript text. Pass nextOffset as offset to continue; raise maxChars (up to ' +
+        '90000) on clients without small output caps. includeSegments weaves [m:ss] ' +
+        'timestamps into txt so you can cite when something was said; keep it stable ' +
+        'while paging, as it changes offsets. Supports txt, srt, and vtt.',
       inputSchema: readTranscriptInputSchema,
-      outputSchema: { result: readTranscriptToolResultSchema },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (input) =>
@@ -77,8 +74,10 @@ export function registerTranscriptTools(context: TranscriptToolContext): void {
         if (result.kind === 'not_found') {
           throw new EntityNotFoundError('Transcript not found')
         }
-        const { text: _body, ...structured } = result
-        return toolSuccess(renderReadResult(result), { result: structured })
+        // No outputSchema, so no structuredContent: the transcript is an opaque blob with
+        // nothing for a caller to filter or branch on, and a client that renders the
+        // structured block and drops the text block would otherwise receive no transcript.
+        return toolText(renderReadResult(result))
       }),
   )
 

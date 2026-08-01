@@ -50,7 +50,7 @@ describe('renderTranscriptsPage', () => {
 })
 
 describe('renderReadResult', () => {
-  it('renders a truncated chunk with continuation hint', () => {
+  it('renders a truncated chunk as front matter above the body', () => {
     const result: Exclude<ReadTranscriptResult, { kind: 'not_found' }> = {
       ...meta,
       kind: 'found',
@@ -60,12 +60,42 @@ describe('renderReadResult', () => {
       totalChars: 100,
       truncated: true,
     }
-    const text = renderReadResult(result)
-    expect(text).toContain('offset=11')
-    expect(text).toContain('hello world')
+    // These keys are the caller's only handle on paging — this tool sends no
+    // structuredContent — so the block is asserted whole, not by substring.
+    expect(renderReadResult(result)).toBe(
+      [
+        '---',
+        'title: "Board Meeting"',
+        'offset: 0',
+        'chars: 11',
+        'totalChars: 100',
+        'truncated: true',
+        'nextOffset: 11',
+        'locked: false',
+        '---',
+        '',
+        'hello world',
+      ].join('\n'),
+    )
   })
 
-  it('renders a complete chunk and a locked preview note', () => {
+  it('closes the fence before a body that starts with a delimiter', () => {
+    const result: Exclude<ReadTranscriptResult, { kind: 'not_found' }> = {
+      // A filename may contain the delimiter; that ambiguity is why the header is fenced.
+      ...meta,
+      displayName: 'Q3 | Board: notes.mp4',
+      kind: 'found',
+      text: '--- not front matter',
+      offset: 0,
+      totalChars: 20,
+      truncated: false,
+    }
+    const lines = renderReadResult(result).split('\n')
+    expect(lines[1]).toBe('title: "Q3 | Board: notes.mp4"')
+    expect(lines.indexOf('---', 1)).toBe(lines.length - 3)
+  })
+
+  it('omits nextOffset on a complete chunk and states locked outright', () => {
     const result: Exclude<ReadTranscriptResult, { kind: 'not_found' }> = {
       ...meta,
       locked: true,
@@ -76,8 +106,29 @@ describe('renderReadResult', () => {
       truncated: false,
     }
     const text = renderReadResult(result)
-    expect(text).toContain('complete')
-    expect(text).toContain('locked')
+    expect(text).toContain('truncated: false')
+    expect(text).toContain('locked: true')
+    expect(text).not.toContain('nextOffset')
+  })
+
+  it('renders the body verbatim when segments are present', () => {
+    const result: Exclude<ReadTranscriptResult, { kind: 'not_found' }> = {
+      ...meta,
+      kind: 'found',
+      text: '[0:01] alpha [0:02] beta',
+      offset: 0,
+      totalChars: 24,
+      truncated: false,
+      segments: [
+        { id: 4, start: 1, end: 2.5, text: 'alpha', speakerId: 'S1' },
+        { id: 5, start: 2.5, end: 3, text: 'beta', speakerId: null },
+      ],
+    }
+    const text = renderReadResult(result)
+    // Timestamps arrive woven into the body. A separate index would repeat every
+    // segment and still leave the agent matching it back onto the text.
+    expect(text.endsWith('---\n\n[0:01] alpha [0:02] beta')).toBe(true)
+    expect(text.match(/alpha/g)).toHaveLength(1)
   })
 })
 

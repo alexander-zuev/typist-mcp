@@ -96,16 +96,13 @@ describe('read_transcript', () => {
       arguments: { id: VALID_ID },
     })
     expect(result.isError).toBeFalsy()
-    const { result: chunk } = result.structuredContent as {
-      result: { kind: string; nextOffset?: number; truncated: boolean }
-    }
-    expect(chunk.kind).toBe('found')
-    expect(chunk.truncated).toBe(true)
-    expect(chunk.nextOffset).toBe(2000)
-    // Body text must live ONLY in the text content block — structured
-    // duplication would double the response against client output caps.
-    expect('text' in chunk).toBe(false)
-    expect(textOf(result)).toContain('offset=0 maxChars=2000 format=txt')
+    // Regression guard: this tool must send ONE block. A client is free to render
+    // structuredContent and drop the text block, which is exactly how the transcript
+    // body went missing when the two blocks carried different data.
+    expect(result.structuredContent).toBeUndefined()
+    const text = textOf(result)
+    expect(text).toContain('offset=0 maxChars=2000 format=txt')
+    expect(text).toContain('totalChars: 100000\ntruncated: true\nnextOffset: 2000')
   })
 
   it('honors offset, maxChars, and format', async () => {
@@ -115,6 +112,26 @@ describe('read_transcript', () => {
       arguments: { id: VALID_ID, offset: 8000, maxChars: 20_000, format: 'vtt' },
     })
     expect(textOf(result)).toContain('offset=8000 maxChars=20000 format=vtt')
+  })
+
+  it('delivers the body whether or not segments are requested', async () => {
+    const mcp = await connectAs('user-read-segments')
+    const [off, on] = await Promise.all([
+      mcp.callTool({ name: 'read_transcript', arguments: { id: VALID_ID } }),
+      mcp.callTool({
+        name: 'read_transcript',
+        arguments: { id: VALID_ID, includeSegments: true },
+      }),
+    ])
+    for (const result of [off, on]) {
+      expect(result.structuredContent).toBeUndefined()
+      expect(textOf(result)).toContain('chunk for')
+    }
+    // Timestamps ride inside the body, and `segments` is never rendered as its own
+    // block — a separate index would repeat the text and still need matching back onto it.
+    expect(textOf(on)).toContain('[0:00] chunk for')
+    expect(textOf(off)).not.toContain('[0:00]')
+    expect(textOf(on)).not.toContain('--- segments')
   })
 
   it('maps not_found to a clean tool error', async () => {

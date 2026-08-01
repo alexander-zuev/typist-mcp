@@ -5,9 +5,10 @@ import type {
 } from '@typist/core'
 
 /**
- * Compact presentation of structured tool results. The text content
- * block is what token-constrained clients show verbatim, so it stays terse;
- * `structuredContent` carries the full DTO.
+ * Compact presentation of tool results for the text content block, which is what
+ * token-constrained clients show verbatim. Where a tool also sends `structuredContent`,
+ * that block carries the same facts as the full DTO — a renderer must never be the only
+ * carrier of data the caller needs.
  */
 
 function formatDuration(seconds: number | null): string {
@@ -39,21 +40,38 @@ export function renderTranscriptsPage(result: TranscriptsPage): string {
   return [header, ...lines, footer].filter(Boolean).join('\n')
 }
 
+/** Quoted so a title containing `:`, a quote, or a newline cannot break the block. */
+function yamlScalar(value: string | number | boolean): string {
+  return typeof value === 'string' ? JSON.stringify(value) : String(value)
+}
+
+/**
+ * Front matter, not a single header line: `title` is a filename and may itself contain the
+ * delimiter, which made a one-line `name | key=value` header ambiguous to parse. A `---`
+ * fence ends on a line, so the body always starts in an unambiguous place.
+ *
+ * Every field is stated outright, including ones derivable from the others (`truncated`,
+ * `nextOffset`). This tool sends no structuredContent, so these keys are the caller's only
+ * handle on paging, and an agent asked to compute one will eventually compute it wrong.
+ */
 export function renderReadResult(
   result: Exclude<ReadTranscriptResult, { kind: 'not_found' }>,
 ): string {
-  const notes: string[] = []
-  if (result.locked) notes.push('locked — preview only')
-  if (result.truncated && result.nextOffset !== undefined) {
-    notes.push(
-      `chars ${result.offset}-${result.offset + result.text.length} of ${result.totalChars}, continue with offset=${result.nextOffset}`,
-    )
-  } else {
-    notes.push(
-      `chars ${result.offset}-${result.offset + result.text.length} of ${result.totalChars}, complete`,
-    )
-  }
-  return `${result.displayName} (${notes.join('; ')})\n\n${result.text}`
+  const fields: Array<[string, string | number | boolean]> = [
+    ['title', result.displayName],
+    ['offset', result.offset],
+    ['chars', result.text.length],
+    ['totalChars', result.totalChars],
+    ['truncated', result.truncated],
+  ]
+  if (result.nextOffset !== undefined) fields.push(['nextOffset', result.nextOffset])
+  fields.push(['locked', result.locked])
+
+  const frontMatter = fields.map(([key, value]) => `${key}: ${yamlScalar(value)}`)
+  // `segments` needs no rendering of its own: with includeSegments the body already
+  // carries [m:ss] markers inline, which is the only form that lets an agent say when
+  // something was said without matching a separate index back onto the text.
+  return `---\n${frontMatter.join('\n')}\n---\n\n${result.text}`
 }
 
 export function renderDownloadResult(result: ExportTranscriptionResponse): string {
