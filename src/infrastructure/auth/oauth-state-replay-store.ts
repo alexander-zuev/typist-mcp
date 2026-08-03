@@ -28,7 +28,5 @@ async function stateUsedKey(state: string): Promise<string> {
 /** Stable, non-sensitive identifier for correlating consent attempts and outcomes. */
 export async function fingerprintOAuthState(state: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(state))
-  return [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('')
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }

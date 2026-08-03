@@ -22,6 +22,7 @@
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
+    "@posthog/mcp": "catalog:",
     "@sentry/cloudflare": "catalog:",
     "@typist/core": "workspace:*",
     "agents": "catalog:",

@@ -2,9 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as Sentry from '@sentry/cloudflare'
 import {
   AuthenticationError,
-  createLogger,
   type McpClientIdentity,
-  mcpConnectionInitialized,
   runWithAnalyticsContext,
   UUIDSchema,
   type UserId,
@@ -12,12 +10,11 @@ import {
 import { McpAgent } from 'agents/mcp'
 
 import packageJson from '../../package.json' with { type: 'json' }
+import { instrumentMcpAnalytics } from '../infrastructure/analytics/mcp-analytics'
 import type { McpTokenProps } from '../infrastructure/auth/mcp-token-props'
 import { createMcpServerDeps, type McpServerDeps } from '../infrastructure/mcp-server-deps'
 import { createMcpServerDurableObjectSentryOptions } from '../infrastructure/observability/sentry'
 import { registerTranscriptTools } from './tools/transcript-tools'
-
-const logger = createLogger('typist-mcp')
 
 class TypistMcpBase extends McpAgent<McpEnv, unknown, McpTokenProps> {
   server = new McpServer({
@@ -42,26 +39,13 @@ class TypistMcpBase extends McpAgent<McpEnv, unknown, McpTokenProps> {
   async init() {
     const userId = this.userId()
     const client = this.clientIdentity()
+    instrumentMcpAnalytics(this.server, this.deps.services.analytics, userId, client)
     registerTranscriptTools({
-      analytics: this.deps.services.analytics,
       server: this.server,
       gateway: this.deps.clients.gateway,
       rateLimiter: this.deps.dos.rateLimiter,
       userId,
-      client,
     })
-    this.server.server.oninitialized = () => {
-      const handshake = this.server.server.getClientVersion()
-      if (!handshake) {
-        logger.warn('mcp_initialize_request_unavailable', { userId })
-        return
-      }
-
-      this.deps.services.analytics.track(
-        mcpConnectionInitialized({ ...client, mcp_client_name: handshake.name }),
-        userId,
-      )
-    }
   }
 
   /** OAuth registration identity, absent on grants issued before it was recorded. */
