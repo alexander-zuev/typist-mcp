@@ -1,12 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as Sentry from '@sentry/cloudflare'
-import {
-  AuthenticationError,
-  type McpClientIdentity,
-  runWithAnalyticsContext,
-  UUIDSchema,
-  type UserId,
-} from '@typist/core'
+import { AuthenticationError, type McpClientIdentity, type UserId } from '@typist/core'
 import { McpAgent } from 'agents/mcp'
 
 import packageJson from '../../package.json' with { type: 'json' }
@@ -27,13 +21,6 @@ class TypistMcpBase extends McpAgent<McpEnv, unknown, McpTokenProps> {
   constructor(ctx: DurableObjectState, env: McpEnv) {
     super(ctx, env)
     this.deps = createMcpServerDeps(env, ctx)
-  }
-
-  fetch(request: Request): Promise<Response> {
-    return runWithAnalyticsContext(
-      { idempotencyKey: { uuid: UUIDSchema.parse(crypto.randomUUID()) } },
-      () => super.fetch(request),
-    )
   }
 
   async init() {
