@@ -1,4 +1,4 @@
-import { PostHogAnalyticsService } from '@typist/core'
+import { PostHogAnalyticsService } from '@typist/core/analytics'
 
 import type { McpServerExecutionContext } from '../mcp-server-deps'
 

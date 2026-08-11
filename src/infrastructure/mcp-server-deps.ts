@@ -1,9 +1,5 @@
-import {
-  KVClient,
-  RateLimiterClient,
-  type McpGatewayContract,
-  type PostHogAnalyticsService,
-} from '@typist/core'
+import { KVClient, RateLimiterClient, type McpGatewayContract } from '@typist/core'
+import type { PostHogAnalyticsService } from '@typist/core/analytics'
 
 import { createAnalyticsService } from './analytics/create-analytics-service'
 import { OAuthStateReplayStore } from './auth/oauth-state-replay-store'
