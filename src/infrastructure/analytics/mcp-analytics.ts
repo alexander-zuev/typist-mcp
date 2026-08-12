@@ -1,7 +1,11 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { instrument } from '@posthog/mcp'
-import { createLogger, type McpClientIdentity, type UserId } from '@typist/core'
-import type { PostHogAnalyticsService } from '@typist/core/analytics'
+import {
+  createLogger,
+  type McpClientIdentity,
+  type PostHogAnalyticsService,
+  type UserId,
+} from '@typist/core'
 
 const logger = createLogger('mcp-analytics')
 
