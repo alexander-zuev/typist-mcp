@@ -35,6 +35,9 @@ export default defineConfig({
             scriptPath: path.join(import.meta.dirname, 'test/fixtures/fake-gateway.js'),
             compatibilityDate: '2026-02-24',
             compatibilityFlags: ['nodejs_compat'],
+            durableObjects: {
+              RATE_LIMITER: 'FakeRateLimiterDO',
+            },
           },
         ],
       },
