@@ -1,6 +1,7 @@
 import {
   KVClient,
-  RateLimiterClient,
+  WorkersBurstLimiter,
+  type BurstLimiter,
   type McpGatewayContract,
   type PostHogAnalyticsService,
 } from '@typist/core'
@@ -25,9 +26,7 @@ export interface McpServerDeps {
   services: {
     analytics: PostHogAnalyticsService
   }
-  dos: {
-    rateLimiter: RateLimiterClient
-  }
+  burst: BurstLimiter
 }
 
 /** Composition root shared by the OAuth Worker and the MCP Durable Object. */
@@ -50,8 +49,6 @@ export function createMcpServerDeps(
     services: {
       analytics: createAnalyticsService(env, executionCtx),
     },
-    dos: {
-      rateLimiter: new RateLimiterClient(env.RATE_LIMITER),
-    },
+    burst: new WorkersBurstLimiter(env.MCP_BURST_60_PER_MIN),
   }
 }

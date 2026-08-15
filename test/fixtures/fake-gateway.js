@@ -1,12 +1,10 @@
-import { DurableObject, WorkerEntrypoint } from 'cloudflare:workers'
+import { WorkerEntrypoint } from 'cloudflare:workers'
 
 /**
  * Test stand-in for the main worker's side of the frozen contract
- * (`McpGatewayContract` + `RateLimiterRpc`). Behavior is keyed off inputs so
- * tests stay declarative:
+ * (`McpGatewayContract`). Behavior is keyed off inputs so tests stay declarative:
  * - cookie `typist_session=<userId>` resolves a session; `typist_anon=1` marks it anonymous
  * - transcript id ending in `404` returns a NOT_FOUND error envelope
- * - userId containing `ratelimited` is denied by the rate limiter
  * - userId containing `gatewaydown` returns a safe infrastructure error envelope
  */
 
@@ -102,13 +100,6 @@ export class McpGateway extends WorkerEntrypoint {
       expiresAt: '2026-07-24T20:00:00.000Z',
       format: input.format,
     })
-  }
-}
-
-export class FakeRateLimiterDO extends DurableObject {
-  async checkRateLimit(key, maxRequests) {
-    if (key.includes('ratelimited')) return { allowed: false, remaining: 0, retryAfter: 30 }
-    return { allowed: true, remaining: maxRequests - 1, retryAfter: null }
   }
 }
 

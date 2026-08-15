@@ -7,7 +7,7 @@ import { defineConfig } from 'vitest/config'
  * All tests run in the workers pool against the real worker (OAuth provider,
  * McpAgent DO, KV). The main app's side of the contract is a fixture worker:
  * TYPIST_GATEWAY resolves to `test/fixtures/fake-gateway.js` (named entrypoint
- * McpGateway) and RATE_LIMITER to its FakeRateLimiterDO.
+ * McpGateway).
  */
 export default defineConfig({
   plugins: [
@@ -25,9 +25,6 @@ export default defineConfig({
         serviceBindings: {
           TYPIST_GATEWAY: { name: 'fake-gateway', entrypoint: 'McpGateway' },
         },
-        durableObjects: {
-          RATE_LIMITER: { className: 'FakeRateLimiterDO', scriptName: 'fake-gateway' },
-        },
         workers: [
           {
             name: 'fake-gateway',
@@ -35,9 +32,6 @@ export default defineConfig({
             scriptPath: path.join(import.meta.dirname, 'test/fixtures/fake-gateway.js'),
             compatibilityDate: '2026-02-24',
             compatibilityFlags: ['nodejs_compat'],
-            durableObjects: {
-              RATE_LIMITER: 'FakeRateLimiterDO',
-            },
           },
         ],
       },

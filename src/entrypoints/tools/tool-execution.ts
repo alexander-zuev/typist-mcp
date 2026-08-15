@@ -7,17 +7,17 @@ import {
   EntityNotFoundError,
   RateLimitError,
   ValidationError,
-  type RateLimiterClient,
+  type BurstLimiter,
   type UserId,
 } from '@typist/core'
 
-import { TOOL_RATE_LIMITS, type ToolName } from './tool-policy'
+import { type ToolName } from './tool-policy'
 import { toolError } from './tool-result'
 
 const logger = createLogger('typist-mcp')
 
 interface ToolExecutionContext {
-  rateLimiter: Pick<RateLimiterClient, 'check'>
+  burst: BurstLimiter
   userId: UserId
 }
 
@@ -50,15 +50,10 @@ export async function executeTool(
   execute: () => Promise<CallToolResult>,
 ): Promise<CallToolResult> {
   try {
-    const limit = TOOL_RATE_LIMITS[tool]
-    const { allowed, retryAfter } = await context.rateLimiter.check(
-      `mcp:${tool}:${context.userId}`,
-      limit.max,
-      limit.windowMs,
-    )
+    const allowed = await context.burst.consume(`mcp:${tool}:${context.userId}`)
     if (!allowed) {
       logger.info('mcp_tool_rate_limited', { tool, userId: context.userId })
-      return toolError(`Rate limit exceeded. Retry in ${retryAfter} seconds.`)
+      return toolError('Rate limit exceeded. Retry in 60 seconds.')
     }
 
     return await execute()

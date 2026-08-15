@@ -4,6 +4,13 @@
   "main": "./src/index.ts",
   "compatibility_date": "2026-05-22",
   "compatibility_flags": ["nodejs_compat"],
+  "ratelimits": [
+    {
+      "name": "MCP_BURST_60_PER_MIN",
+      "namespace_id": "1101",
+      "simple": { "limit": 60, "period": 60 },
+    },
+  ],
   "upload_source_maps": true,
   "observability": {
     "logs": {
@@ -23,10 +30,7 @@
     },
   ],
   "durable_objects": {
-    "bindings": [
-      { "name": "MCP_OBJECT", "class_name": "TypistMcp" },
-      { "name": "RATE_LIMITER", "class_name": "RateLimiterDO", "script_name": "typist-dev" },
-    ],
+    "bindings": [{ "name": "MCP_OBJECT", "class_name": "TypistMcp" }],
   },
   // Local dev: main app must be running (`pnpm dev`) so the service binding resolves.
   "vars": {
@@ -46,6 +50,13 @@
   "env": {
     "prod": {
       "name": "typist-mcp",
+      "ratelimits": [
+        {
+          "name": "MCP_BURST_60_PER_MIN",
+          "namespace_id": "1101",
+          "simple": { "limit": 60, "period": 60 },
+        },
+      ],
       "vars": {
         "ENV": "production",
         "MAIN_APP_URL": "https://iamtypist.dev",
@@ -56,10 +67,7 @@
         { "binding": "TYPIST_GATEWAY", "service": "typist", "entrypoint": "McpGateway" },
       ],
       "durable_objects": {
-        "bindings": [
-          { "name": "MCP_OBJECT", "class_name": "TypistMcp" },
-          { "name": "RATE_LIMITER", "class_name": "RateLimiterDO", "script_name": "typist" },
-        ],
+        "bindings": [{ "name": "MCP_OBJECT", "class_name": "TypistMcp" }],
       },
       "secrets": {
         "required": ["MCP_STATE_SECRET", "POSTHOG_API_KEY"],

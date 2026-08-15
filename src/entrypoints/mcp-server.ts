@@ -30,7 +30,7 @@ class TypistMcpBase extends McpAgent<McpEnv, unknown, McpTokenProps> {
     registerTranscriptTools({
       server: this.server,
       gateway: this.deps.clients.gateway,
-      rateLimiter: this.deps.dos.rateLimiter,
+      burst: this.deps.burst,
       userId,
     })
   }

@@ -3,7 +3,6 @@ import {
   downloadTranscriptInputSchema,
   EntityNotFoundError,
   mcpExportTranscriptionResponseSchema,
-  type RateLimiterClient,
   readTranscriptInputSchema,
   searchTranscriptsInputSchema,
   transcriptsPageSchema,
@@ -11,6 +10,7 @@ import {
 } from '@typist/core'
 
 import type { McpGatewayClient } from '../../infrastructure/clients/mcp-gateway-client'
+import type { McpServerDeps } from '../../infrastructure/mcp-server-deps'
 import {
   renderDownloadResult,
   renderReadResult,
@@ -22,14 +22,14 @@ import { toolSuccess, toolText } from './tool-result'
 interface TranscriptToolContext {
   server: McpServer
   gateway: McpGatewayClient
-  rateLimiter: Pick<RateLimiterClient, 'check'>
+  burst: McpServerDeps['burst']
   userId: UserId
 }
 
 /** Registers the complete read-only transcript tool surface. */
 export function registerTranscriptTools(context: TranscriptToolContext): void {
-  const { server, gateway, rateLimiter, userId } = context
-  const executionContext = { rateLimiter, userId }
+  const { server, gateway, burst, userId } = context
+  const executionContext = { burst, userId }
 
   server.registerTool(
     'search_transcripts',

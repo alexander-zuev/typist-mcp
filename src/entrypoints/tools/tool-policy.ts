@@ -1,7 +1,3 @@
-export const TOOL_RATE_LIMITS = {
-  search_transcripts: { max: 60, windowMs: 60_000 },
-  read_transcript: { max: 30, windowMs: 60_000 },
-  download_transcript: { max: 30, windowMs: 60_000 },
-} as const
+export const TOOL_NAMES = ['search_transcripts', 'read_transcript', 'download_transcript'] as const
 
-export type ToolName = keyof typeof TOOL_RATE_LIMITS
+export type ToolName = (typeof TOOL_NAMES)[number]
