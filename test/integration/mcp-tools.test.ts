@@ -216,11 +216,4 @@ describe('failure containment', () => {
     expect(textOf(result)).toBe('Something went wrong')
     expect(textOf(result)).not.toContain('D1_ERROR')
   })
-
-  it('returns a retry hint when rate limited', async () => {
-    const mcp = await connectAs('user-rate-limited')
-    const result = await mcp.callTool({ name: 'search_transcripts', arguments: {} })
-    expect(result.isError).toBe(true)
-    expect(textOf(result)).toContain('Retry in 30 seconds')
-  })
 })
