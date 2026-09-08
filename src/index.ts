@@ -1,3 +1,4 @@
+import './logging'
 import OAuthProvider from '@cloudflare/workers-oauth-provider'
 import * as Sentry from '@sentry/cloudflare'
 import { runWithAnalyticsContext, setLoggerErrorHook, UUIDSchema } from '@typist/core'

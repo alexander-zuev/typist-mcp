@@ -59,7 +59,8 @@ export async function executeTool(
     return await execute()
   } catch (error) {
     const expected = expectedToolError(error)
-    if (!expected) logger.error('mcp_tool_failed', { tool, userId: context.userId, error })
+    if (!expected)
+      logger.error('mcp_tool_failed', { error, userId: context.userId, details: { tool } })
     return toolError(expected?.message ?? 'Something went wrong')
   }
 }

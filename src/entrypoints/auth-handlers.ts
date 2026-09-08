@@ -78,7 +78,9 @@ async function handleAuthorize(
   try {
     oauthReq = await oauth.parseAuthRequest(request)
   } catch (error) {
-    logger.info('mcp_authorize_invalid_request', { error })
+    logger.info('mcp_authorize_invalid_request', {
+      errorName: error instanceof Error ? error.name : 'NonError',
+    })
     return new Response('Invalid authorization request', { status: 400 })
   }
 

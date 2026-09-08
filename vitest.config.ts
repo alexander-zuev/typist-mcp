@@ -38,6 +38,7 @@ export default defineConfig({
     }),
   ],
   test: {
+    setupFiles: ['./test/setup.ts'],
     reporters: ['dot'],
     include: ['test/**/*.test.ts'],
     // The MCP streamable-HTTP transport aborts per-request SSE bodies by
