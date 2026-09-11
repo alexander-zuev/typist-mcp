@@ -26,6 +26,7 @@
     "@sentry/cloudflare": "catalog:",
     "@typist/core": "workspace:*",
     "agents": "catalog:",
+    "posthog-node": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
