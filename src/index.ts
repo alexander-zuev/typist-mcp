@@ -12,8 +12,8 @@ export { TypistMcp }
 
 setLoggerErrorHook((entry) => {
   Sentry.captureException(entry.error, {
-    extra: entry.context,
-    ...(entry.distinctId && { user: { id: entry.distinctId } }),
+    extra: entry.attributes,
+    ...(entry.userId && { user: { id: entry.userId } }),
   })
 })
 
