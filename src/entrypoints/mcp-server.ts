@@ -10,7 +10,7 @@ import { createMcpServerDeps, type McpServerDeps } from '../infrastructure/mcp-s
 import { createMcpServerDurableObjectSentryOptions } from '../infrastructure/observability/sentry'
 import { registerTranscriptTools } from './tools/transcript-tools'
 
-class TypistMcpBase extends McpAgent<McpEnv, unknown, McpTokenProps> {
+class TypistMcpAgent extends McpAgent<McpEnv, unknown, McpTokenProps> {
   server = new McpServer({
     name: packageJson.name,
     title: 'Typist',
@@ -51,5 +51,5 @@ class TypistMcpBase extends McpAgent<McpEnv, unknown, McpTokenProps> {
 
 export const TypistMcp = Sentry.instrumentDurableObjectWithSentry(
   createMcpServerDurableObjectSentryOptions,
-  TypistMcpBase,
+  TypistMcpAgent,
 )
