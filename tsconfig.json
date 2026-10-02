@@ -3,15 +3,24 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "esnext",
-    "lib": ["ESNext"],
+    "lib": [
+      "ESNext"
+    ],
     "module": "esnext",
     "moduleResolution": "bundler",
-    "types": ["@cloudflare/vitest-pool-workers", "@cloudflare/vitest-pool-workers/types"],
+    "types": [
+      "@cloudflare/vitest-plugin/types"
+    ],
     "paths": {},
     "allowImportingTsExtensions": false,
     "noEmit": true,
     "composite": false,
     "incremental": true
   },
-  "include": ["src", "test/**/*.ts", "vitest.config.ts", "worker-configuration.d.ts"]
+  "include": [
+    "src",
+    "tests/**/*.ts",
+    "vitest.config.ts",
+    "worker-configuration.d.ts"
+  ]
 }

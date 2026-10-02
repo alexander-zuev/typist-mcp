@@ -1,22 +1,10 @@
-import { createExecutionContext, waitOnExecutionContext } from 'cloudflare:test'
-import { env, exports as workerExports } from 'cloudflare:workers'
+import { env, exports } from 'cloudflare:workers'
 
 export const MCP_ORIGIN = 'https://mcp.test'
 export const REDIRECT_URI = 'https://client.test/callback'
 
-// `Exports` is untyped without wrangler-generated worker types (env.ts is
-// hand-written) — narrow the default export to a fetch handler here.
-const worker = workerExports as unknown as {
-  default: { fetch(request: Request, env: unknown, ctx: ExecutionContext): Promise<Response> }
-}
-
-/** Route a request through the worker's default export (the OAuthProvider). */
 export async function selfFetch(input: string | Request, init?: RequestInit): Promise<Response> {
-  const request = input instanceof Request ? input : new Request(input, init)
-  const ctx = createExecutionContext()
-  const response = await worker.default.fetch(request, env, ctx)
-  await waitOnExecutionContext(ctx)
-  return response
+  return exports.default.fetch(input, init)
 }
 
 export function sessionCookie(userId: string, options?: { anonymous?: boolean }): string {
@@ -94,7 +82,7 @@ export async function authorizeAndApprove(
   }
   const callbackUrl = new URL(approveResponse.headers.get('location') ?? '')
   const code = callbackUrl.searchParams.get('code')
-  if (!code) throw new Error(`callback missing code: ${callbackUrl}`)
+  if (!code) throw new Error(`callback missing code: ${callbackUrl.href}`)
   return code
 }
 

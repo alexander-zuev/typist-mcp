@@ -15,9 +15,11 @@
     "lint:fix": "oxlint . --fix --quiet",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
-    "test": "vitest run --reporter=dot --silent",
-    "test:unit": "vitest run --reporter=dot --silent",
-    "deploy:prod": "wrangler deploy --env prod"
+    "test": "turbo run test:unit test:integration --filter=typist-mcp --continue=dependencies-successful",
+    "test:unit": "vitest run --project unit",
+    "deploy:prod": "wrangler deploy --env prod",
+    "test:integration": "CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false vitest run --project integration",
+    "check:tests": "CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false node ../../scripts/check-test-discovery.mjs"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "catalog:",
@@ -30,7 +32,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "catalog:",
+    "@cloudflare/vitest-plugin": "catalog:",
     "@cloudflare/workers-types": "catalog:",
     "@dotenvx/dotenvx": "catalog:",
     "@types/node": "catalog:",

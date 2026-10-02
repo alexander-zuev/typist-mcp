@@ -1,5 +1,5 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from './test'
 
 import { connectMcpClient, connectMcpSession } from '../helpers/mcp-client'
 import { MCP_ORIGIN, obtainAccessToken, selfFetch } from '../helpers/oauth'

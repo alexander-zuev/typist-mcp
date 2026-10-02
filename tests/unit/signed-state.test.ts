@@ -1,6 +1,6 @@
 import type { AuthRequest } from '@cloudflare/workers-oauth-provider'
 import type { UserId } from '@typist/core'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from './test'
 
 import { signOAuthState, verifyOAuthState } from '../../src/infrastructure/auth/signed-state'
 
@@ -16,10 +16,6 @@ const oauthReq: AuthRequest = {
   codeChallenge: 'challenge',
   codeChallengeMethod: 'S256',
 }
-
-afterEach(() => {
-  vi.useRealTimers()
-})
 
 describe('signed OAuth state', () => {
   it('round-trips the request and userId', async () => {
@@ -52,11 +48,11 @@ describe('signed OAuth state', () => {
     expect(await verifyOAuthState(SECRET, 'a.b.c')).toBeNull()
   })
 
-  it('expires after its TTL', async () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-07-23T10:00:00Z'))
+  it('expires after its TTL', async ({ clock }) => {
+    clock.useFakeTimers()
+    clock.setSystemTime(new Date('2026-07-23T10:00:00Z'))
     const state = await signOAuthState(SECRET, oauthReq, USER_ID)
-    vi.setSystemTime(new Date('2026-07-23T10:11:00Z'))
+    clock.setSystemTime(new Date('2026-07-23T10:11:00Z'))
     expect(await verifyOAuthState(SECRET, state)).toBeNull()
   })
 })

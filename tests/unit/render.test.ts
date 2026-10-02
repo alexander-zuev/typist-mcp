@@ -3,7 +3,7 @@ import type {
   ReadTranscriptResult,
   TranscriptsPage,
 } from '@typist/core'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from './test'
 
 import {
   renderDownloadResult,

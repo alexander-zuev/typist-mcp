@@ -1,5 +1,5 @@
-import { env } from 'cloudflare:workers'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from './test'
+import invalidClientMetadata from '../fixtures/invalid-client-metadata.json'
 
 import {
   authorizeAndApprove,
@@ -52,12 +52,12 @@ describe('/mcp bearer gate', () => {
     const { verifier, challenge } = await createPkcePair()
     const code = await authorizeAndApprove(clientId, challenge, sessionCookie(userId))
     const token = await exchangeCode(clientId, code, verifier)
-    const [, grantId] = token.split(':')
-    if (!grantId) throw new Error('token missing grant id')
-    const oauthEnv = env as typeof env & {
-      OAUTH_PROVIDER: { revokeGrant(grantId: string, userId: string): Promise<void> }
-    }
-    await oauthEnv.OAUTH_PROVIDER.revokeGrant(grantId, userId)
+    const revoked = await selfFetch(`${MCP_ORIGIN}/token`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ token, token_type_hint: 'access_token', client_id: clientId }),
+    })
+    expect(revoked.status).toBe(200)
 
     const response = await selfFetch(`${MCP_ORIGIN}/mcp`, {
       method: 'POST',
@@ -256,8 +256,7 @@ describe('/approve', () => {
 
   it('rejects non-web client metadata URIs at registration (first line before the consent allowlist)', async () => {
     await expect(
-      // oxlint-disable-next-line no-script-url -- the attack input under test
-      registerClient({ logo_uri: 'javascript:alert(1)' }),
+      registerClient(invalidClientMetadata),
     ).rejects.toThrow(/register failed: 400/)
   })
 

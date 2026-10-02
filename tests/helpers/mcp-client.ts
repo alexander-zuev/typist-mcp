@@ -11,18 +11,7 @@ export interface McpTestSession {
 /** Real MCP SDK client speaking streamable HTTP to the worker under test. */
 export async function connectMcpSession(accessToken: string): Promise<McpTestSession> {
   const transport = new StreamableHTTPClientTransport(new URL('/mcp', MCP_ORIGIN), {
-    // Swallow the AbortErrors the transport triggers when closing its SSE
-    // streams — they surface as unhandled rejections in the workers pool.
-    fetch: async (url: string | URL | Request, init?: RequestInit) => {
-      try {
-        return await selfFetch(new Request(url, init))
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          return new Response(null, { status: 499 })
-        }
-        throw error
-      }
-    },
+    fetch: (url, init) => selfFetch(new Request(url, init)),
     requestInit: { headers: { authorization: `Bearer ${accessToken}` } },
   })
   const client = new Client({ name: 'test-client', version: '1.0.0' })

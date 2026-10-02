@@ -1,13 +1,13 @@
 import { AuthenticationError, ok, userIdSchema, type McpGatewayContract } from '@typist/core'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from './test'
 
 import { McpGatewayClient } from '../../src/infrastructure/clients/mcp-gateway-client'
 
-const gateway: McpGatewayContract = {
-  getSession: vi.fn(),
-  searchTranscripts: vi.fn(),
-  readTranscript: vi.fn(),
-  downloadTranscript: vi.fn(),
+const gateway = {
+  getSession: vi.fn<McpGatewayContract['getSession']>(),
+  searchTranscripts: vi.fn<McpGatewayContract['searchTranscripts']>(),
+  readTranscript: vi.fn<McpGatewayContract['readTranscript']>(),
+  downloadTranscript: vi.fn<McpGatewayContract['downloadTranscript']>(),
 }
 
 describe('McpGatewayClient', () => {
