@@ -1,8 +1,8 @@
 import type { AuthRequest } from '@cloudflare/workers-oauth-provider'
 import type { UserId } from '@typist/core'
-import { describe, expect, it } from './test'
 
 import { signOAuthState, verifyOAuthState } from '../../src/infrastructure/auth/signed-state'
+import { describe, expect, it } from './test'
 
 const SECRET = 'unit-test-secret'
 const USER_ID = '99999999-9999-4999-8999-999999999999' as UserId

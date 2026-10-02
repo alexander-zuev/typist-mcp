@@ -1,7 +1,10 @@
 import { vi } from 'vitest'
 
 export function createClock(onCleanup: (cleanup: () => void) => void) {
-  onCleanup(() => { vi.clearAllTimers(); vi.useRealTimers() })
+  onCleanup(() => {
+    vi.clearAllTimers()
+    vi.useRealTimers()
+  })
   return {
     useFakeTimers: () => vi.useFakeTimers(),
     useRealTimers: () => vi.useRealTimers(),

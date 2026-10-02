@@ -1,6 +1,4 @@
-import { describe, expect, it } from './test'
 import invalidClientMetadata from '../fixtures/invalid-client-metadata.json'
-
 import {
   authorizeAndApprove,
   authorizeUrl,
@@ -13,6 +11,7 @@ import {
   selfFetch,
   sessionCookie,
 } from '../helpers/oauth'
+import { describe, expect, it } from './test'
 
 describe('discovery', () => {
   it('serves authorization server metadata', async () => {
@@ -255,9 +254,7 @@ describe('/approve', () => {
   })
 
   it('rejects non-web client metadata URIs at registration (first line before the consent allowlist)', async () => {
-    await expect(
-      registerClient(invalidClientMetadata),
-    ).rejects.toThrow(/register failed: 400/)
+    await expect(registerClient(invalidClientMetadata)).rejects.toThrow(/register failed: 400/)
   })
 
   it('forwards web client metadata URIs to the consent redirect', async () => {

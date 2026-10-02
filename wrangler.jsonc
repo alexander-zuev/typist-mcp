@@ -55,12 +55,20 @@
         "SENTRY_DSN": "",
         "MAIN_APP_URL": "https://app.test",
         "MCP_STATE_SECRET": "test-state-secret-32-chars-long!",
-        "POSTHOG_API_KEY": "test-posthog-key"
+        "POSTHOG_API_KEY": "test-posthog-key",
       },
       "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "test-oauth" }],
-      "services": [{ "binding": "TYPIST_GATEWAY", "service": "fake-gateway", "entrypoint": "McpGateway" }],
+      "services": [
+        { "binding": "TYPIST_GATEWAY", "service": "fake-gateway", "entrypoint": "McpGateway" },
+      ],
       "durable_objects": { "bindings": [{ "name": "MCP_OBJECT", "class_name": "TypistMcp" }] },
-      "ratelimits": [{ "name": "MCP_BURST_60_PER_MIN", "namespace_id": "1101", "simple": { "limit": 60, "period": 60 } }]
+      "ratelimits": [
+        {
+          "name": "MCP_BURST_60_PER_MIN",
+          "namespace_id": "1101",
+          "simple": { "limit": 60, "period": 60 },
+        },
+      ],
     },
     "prod": {
       "name": "typist-mcp",

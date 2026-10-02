@@ -1,7 +1,7 @@
 import { AuthenticationError, ok, userIdSchema, type McpGatewayContract } from '@typist/core'
-import { describe, expect, it, vi } from './test'
 
 import { McpGatewayClient } from '../../src/infrastructure/clients/mcp-gateway-client'
+import { describe, expect, it, vi } from './test'
 
 const gateway = {
   getSession: vi.fn<McpGatewayContract['getSession']>(),

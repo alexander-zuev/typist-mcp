@@ -1,9 +1,8 @@
-import { describe, expect, it, vi } from './test'
-
 import {
   fingerprintOAuthState,
   OAuthStateReplayStore,
 } from '../../src/infrastructure/auth/oauth-state-replay-store'
+import { describe, expect, it, vi } from './test'
 
 describe('OAuthStateReplayStore', () => {
   it('checks a hashed key instead of exposing the signed state', async () => {

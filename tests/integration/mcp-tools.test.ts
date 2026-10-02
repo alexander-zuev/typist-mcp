@@ -1,8 +1,8 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { afterEach, describe, expect, it } from './test'
 
 import { connectMcpClient, connectMcpSession } from '../helpers/mcp-client'
 import { MCP_ORIGIN, obtainAccessToken, selfFetch } from '../helpers/oauth'
+import { afterEach, describe, expect, it } from './test'
 
 const VALID_ID = '11111111-1111-4111-8111-111111111111'
 // Mirrors NOT_FOUND_ID in test/fixtures/fake-gateway.js (plain JS, not importable here).

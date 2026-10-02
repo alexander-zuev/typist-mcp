@@ -3,13 +3,13 @@ import type {
   ReadTranscriptResult,
   TranscriptsPage,
 } from '@typist/core'
-import { describe, expect, it } from './test'
 
 import {
   renderDownloadResult,
   renderReadResult,
   renderTranscriptsPage,
 } from '../../src/presentation/tool-result-renderers'
+import { describe, expect, it } from './test'
 
 const item = {
   id: '11111111-1111-4111-8111-111111111111',
