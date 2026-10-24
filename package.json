@@ -15,7 +15,7 @@
     "lint:fix": "oxlint . --fix --quiet",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
-    "test": "turbo run test:unit test:integration --filter=typist-mcp --continue=dependencies-successful",
+    "test": "pnpm run test:unit && pnpm run test:integration",
     "test:unit": "vitest run --project unit",
     "deploy:prod": "wrangler deploy --env prod",
     "test:integration": "CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false vitest run --project integration",
